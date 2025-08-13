@@ -8,6 +8,15 @@ projects:
 assignees: []
 
 body:
+  - type: markdown
+    attributes:
+      value: |
+        > ℹ️ **Indication**
+        > Merci d’**ajouter des tags/labels** sur l’issue après création :
+        > - **Durée estimée**
+        > - **Module(s) concerné(s)**
+
+
   - type: textarea
     id: contexte
     attributes:
@@ -21,8 +30,8 @@ body:
     id: comportement-actuel
     attributes:
       label: 🔍 Comportement actuel
-      description: Décrire le comportement observé actuellement et indiquer si c’est reproductible.
-      placeholder: Décrire précisément le problème...
+      description: Décrire le comportement observé actuellement et indiquer si c’est reproductible (étapes, environnement, logs, captures).
+      placeholder: Décrire précisément le problème, étapes pour reproduire, environnement...
     validations:
       required: true
 
@@ -42,10 +51,9 @@ body:
       description: Lister les scénarios OK et KO.
       value: |
         ### Cas OK
-        - 
+        -
 
         ### Cas KO
-        - 
+        -
     validations:
       required: false
-

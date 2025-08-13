@@ -8,6 +8,14 @@ projects:
 assignees: []
 
 body:
+  - type: markdown
+    attributes:
+      value: |
+        > ℹ️ **Indication**
+        > Merci d’**ajouter des tags/labels** sur l’issue après création :
+        > - **Durée estimée**
+        > - **Module(s) concerné(s)**
+
   - type: textarea
     id: contexte
     attributes:
@@ -21,7 +29,7 @@ body:
     id: description
     attributes:
       label: 📋 Détails de la tâche
-      description: Décrire précisément ce qu'il faut faire.
+      description: Décrire précisément ce qu'il faut faire (étapes, composants, contraintes).
       placeholder: Liste des étapes ou description technique...
     validations:
       required: true
@@ -33,7 +41,7 @@ body:
       description: Lister les scénarios de validation et d’échec (si applicable).
       value: |
         ### Cas OK
-        - 
+        -
 
         ### Cas KO
         - 

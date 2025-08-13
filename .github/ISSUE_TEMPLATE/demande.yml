@@ -7,6 +7,15 @@ projects:
 assignees: []
 
 body:
+  - type: markdown
+    attributes:
+      value: |
+        > ℹ️ **Indication**
+        > Merci d’**ajouter des tags/labels** sur l’issue après création :
+        > - **Durée estimée**
+        > - **Module(s) concerné(s)**
+
+
   - type: textarea
     id: contexte
     attributes:
@@ -32,10 +41,9 @@ body:
       description: Lister les scénarios de validation et d’échec.
       value: |
         ### Cas OK
-        - 
+        -
 
         ### Cas KO
-        - 
+        -
     validations:
       required: false
-
