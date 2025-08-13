@@ -1,28 +1,61 @@
-# D4E Digital4Efficiency Sàrl
+# D4E | Digital4Efficiency Sàrl
 
-## À propos de nous 🚀
+## Intégrateur romand de solutions ERP Odoo & eCommerce 🚀
 
-**D4E Digital4Efficiency Sàrl** est une société de conseil spécialisée dans la transformation numérique et l'optimisation des processus métier. Nous accompagnons les entreprises dans leur transition vers l'ère digitale en proposant des solutions innovantes et sur mesure.
+**D4E | Digital4Efficiency** accompagne les TPE et PME suisses dans leur transformation digitale et soutient leur croissance. Nous répondons rapidement et simplement à vos problématiques.
 
-## Notre mission 🎯
+## Notre expertise 💼
 
-Nous nous engageons à maximiser l'efficacité opérationnelle de nos clients grâce à des technologies de pointe et des méthodologies éprouvées. Notre objectif est de transformer les défis numériques en opportunités de croissance et de compétitivité.
+### **PARTENAIRE SILVER Odoo en Suisse** 🏆
 
-## Nos services 💼
+Nous sommes fiers d'être le **partenaire SILVER officiel d'Odoo EN SUISSE**. **D4E | Digital4Efficiency** est spécialisé dans l'intégration d'**Odoo** à Genève et certifié par l'éditeur.
 
-- **Transformation numérique** : Accompagnement complet dans la modernisation des systèmes
-- **Optimisation des processus** : Analyse et amélioration des workflows métier
-- **Conseil en technologies** : Expertise dans les solutions digitales innovantes
-- **Formation et accompagnement** : Transfert de compétences et support utilisateur
+### Solutions ERP Odoo complètes 📊
+
+En proposant la solution **Odoo**, un ERP open source, **D4E | Digital4Efficiency** simplifie et automatise vos flux et process afin de vous offrir la possibilité de vous concentrer sur votre *core business*.
+
+**Nos modules d'expertise :**
+- **Sites Web** : Site Web, eCommerce, Blog, Forum, eLearning, Live Chat
+- **Finance** : Comptabilité, Facturation, Notes de frais, Documents, Spreadsheets, Signature
+- **Ressources Humaines** : Employés, Recrutement, Congés, Evaluations, Referral, Parc Automobile
+- **Services** : Projets, Feuilles de temps, Services sur Site, Assistance, Planification, Rendez-vous
+- **Ventes** : CRM, Ventes, Point de Vente, Abonnements, Location
+- **Inventaire** : Inventaire, Fabrication, PLM, Achats, Maintenance, Qualité
+- **Marketing** : Automatisation Marketing, Email Marketing, Marketing par SMS, Social Marketing, Events, Sondage
+- **Productivité** : Discussion, Validations, IoT, VOIP, Connaissances
+
+### Solutions eCommerce 🛒
+
+Notre équipe **eCommerce** est également à vos côtés pour optimiser les performances de votre site internet ou boutique en ligne.
 
 ## Notre approche 🔧
 
-Nous privilégions une approche collaborative et personnalisée, en nous adaptant aux spécificités de chaque organisation. Notre méthodologie combine expertise technique et vision stratégique pour garantir des résultats durables.
+L'agilité de **D4E | Digital4Efficiency** cumulée à la puissance de l'ERP **Odoo**. Après une phase obligatoire de cadrage, nos experts travaillent de manière agile pour implémenter les modules dont vous avez besoin.
+
+**D4E | Digital4Efficiency** est un facilitateur et rend opérationnel les modules et leurs bénéfices : gains de productivité, croissance des ventes, simplicité des process, satisfaction clients.
+
+## Nos références 📈
+
+**12 millions d'utilisateurs** dans le monde et **+50'000 entreprises** séduites par Odoo.
+
+## Nos bureaux 📍
+
+### Suisse
+- **Genève** : Chemin du Pavillon 2, CH-1218 Le Grand-Saconnex
+- **Sion** : Place du Midi 48, CH-1950 Sion
+- **Plan-les-Ouates** : Chemin du Pré-Fleuri, 5, CH-1228 Plan-les-Ouates
+
+### Espagne
+- **Barcelone** : +34 930 49 00 69 | espana@d4e.cool
 
 ## Contact 📞
 
-Pour plus d'informations sur nos services ou pour discuter de vos projets de transformation numérique, n'hésitez pas à nous contacter.
+- **Téléphone** : +41 58 255 11 15
+- **Email** : info@digital4efficiency.ch
+- **Site web** : [www.digital4efficiency.ch](https://www.digital4efficiency.ch/)
 
 ---
 
-*D4E Digital4Efficiency Sàrl - Votre partenaire pour l'efficacité numérique*
+**Digitalisez votre entreprise, stimulez votre activité, générez des résultats**
+
+*D4E | Digital4Efficiency - Votre partenaire local de confiance, spécialisé dans l'intégration de solutions Odoo, ERP et eCommerce*
