@@ -6,6 +6,7 @@ labels:
 projects:
   - d4e-digital-4-efficiency/5
 assignees: []
+type: Task
 
 body:
   - type: markdown
