@@ -8,12 +8,6 @@ projects:
   - d4e-digital-4-efficiency/5
 assignees: []
 
-# Métadonnées pour l'association avec le type Bug GitHub
-metadata:
-  type: bug
-  category: issue
-  severity: medium
-
 body:
   - type: markdown
     attributes:
