@@ -1,5 +1,5 @@
 blank_issues_enabled: true
 contact_links:
-  - name: 📌 Project board D4E (priorisation)
+  - name: 📌 Tableau de bord D4E (priorisation)
     url: https://github.com/orgs/d4e-digital-4-efficiency/projects/5
-    about: Pour les demandes hors bug/feature/tâche, ou pour suivre l’avancement.
+    about: Pour suivre l’avancement
