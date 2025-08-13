@@ -1,8 +1,7 @@
 name: 🛠️ Tâche technique
 description: Décrire une tâche technique, de maintenance ou d'amélioration interne
 title: "client : sujet"
-labels:
-  - technical
+labels: []
 projects:
   - d4e-digital-4-efficiency/5
 assignees: []

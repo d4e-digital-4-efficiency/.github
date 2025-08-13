@@ -1,9 +1,7 @@
 name: 🐞 Bug
 description: Déclarer un bug ou un comportement inattendu
 title: "client : sujet"
-labels:
-  - bug
-  - type:bug
+labels: []
 projects:
   - d4e-digital-4-efficiency/5
 assignees: []
