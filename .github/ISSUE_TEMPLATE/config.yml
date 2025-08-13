@@ -1,4 +1,4 @@
-blank_issues_enabled: false
+blank_issues_enabled: true
 contact_links:
   - name: 📌 Project board D4E (priorisation)
     url: https://github.com/orgs/d4e-digital-4-efficiency/projects/5

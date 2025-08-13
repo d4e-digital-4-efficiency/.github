@@ -49,20 +49,3 @@ body:
     validations:
       required: false
 
-  - type: input
-    id: duree
-    attributes:
-      label: ⏱ Tag de durée
-      description: Indiquer le tag de durée estimée (ex: `< 1j`, `1-3j`, `> 1s`)
-      placeholder: Exemple : `< 1j`
-    validations:
-      required: true
-
-  - type: input
-    id: modules
-    attributes:
-      label: 🧩 Tag module(s) concerné(s)
-      description: Indiquer le ou les modules concernés (séparés par des virgules)
-      placeholder: Exemple : facturation, export CSV
-    validations:
-      required: true

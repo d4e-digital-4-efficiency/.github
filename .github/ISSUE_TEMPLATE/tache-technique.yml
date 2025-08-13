@@ -39,8 +39,3 @@ body:
         - 
     validations:
       required: false
-
-  - type: input
-    id: duree
-    attributes:
-      label: ⏱ Tag de durée
