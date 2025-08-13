@@ -1,0 +1,46 @@
+name: 🛠️ Tâche technique
+description: Décrire une tâche technique, de maintenance ou d'amélioration interne
+title: "client : sujet"
+labels:
+  - technical
+projects:
+  - d4e-digital-4-efficiency/5
+assignees: []
+
+body:
+  - type: textarea
+    id: contexte
+    attributes:
+      label: 📝 Contexte / objectif technique
+      description: Décrire le contexte technique, l'objectif et pourquoi cette tâche est nécessaire.
+      placeholder: Expliquer la situation, le problème technique ou l'optimisation recherchée...
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 📋 Détails de la tâche
+      description: Décrire précisément ce qu'il faut faire.
+      placeholder: Liste des étapes ou description technique...
+    validations:
+      required: true
+
+  - type: textarea
+    id: plan-de-test
+    attributes:
+      label: 🧪 Plan de test
+      description: Lister les scénarios de validation et d’échec (si applicable).
+      value: |
+        ### Cas OK
+        - 
+
+        ### Cas KO
+        - 
+    validations:
+      required: false
+
+  - type: input
+    id: duree
+    attributes:
+      label: ⏱ Tag de durée
