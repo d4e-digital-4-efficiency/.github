@@ -11,10 +11,12 @@ body:
   - type: markdown
     attributes:
       value: |
-        > ℹ️ **Indication**
+        > ℹ️ **Indication pour les chefs de projet**
         > Merci d’**ajouter des tags/labels** sur l’issue :
         > - **Durée estimée**
         > - **Module(s) concerné(s)**
+        >
+        > Ne pas hésiter à mettre une **vidéo** et/ou des captures d'écran pour illustrer le problème.
         >
         > Si des compléments sont nécessaires, merci de les ajouter dans la description initiale de la tâche en plus d'un commentaire.
 
@@ -46,6 +48,12 @@ body:
     validations:
       required: true
 
+  - type: markdown
+    attributes:
+      value: |
+        > ℹ️ Indication pour les **développeurs**
+        > Ne pas hésiter à **revenir vers le demandeur** si l'estimation de temps est insuffisante, si le module indiqué n'est pas le bon, si besoin d'un **appel pour clarifier** le besoin, ...
+
   - type: textarea
     id: plan-de-test
     attributes:
@@ -59,3 +67,14 @@ body:
         -
     validations:
       required: false
+
+  - type: textarea
+    id: documentation
+    attributes:
+      label: 📝 Documentation
+      description: Gérer la documentation dans le fichier README.md du module concerné.
+      value: |
+        - [ ] README.md du module créé ou mis à jour
+        - [ ] Noms des variables et fonctions clairs
+        - [ ] Commentaires dans le code si nécessaire
+        - [ ] TODO dans le code ou dans le README.md si nécessaire (bugs identifiés, améliorations possibles, ...)
