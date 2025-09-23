@@ -46,11 +46,11 @@ body:
       description: Décrire clairement le comportement attendu si le bug n’existait pas.
       placeholder: Décrire ce qui devrait se passer...
       value: |
-
-
-        
-        Indication pour les **développeurs**
-        Ne pas hésiter à **revenir vers le demandeur** si l'estimation de temps est insuffisante, si le module indiqué n'est pas le bon, si besoin d'un **appel pour clarifier** le besoin, ...
+        >
+        >
+        >
+        > Indication pour les **développeurs**
+        > Ne pas hésiter à **revenir vers le demandeur** si l'estimation de temps est insuffisante, si le module indiqué n'est pas le bon, si besoin d'un **appel pour clarifier** le besoin, ...
     validations:
       required: true
 
