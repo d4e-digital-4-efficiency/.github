@@ -1,6 +1,7 @@
 name: Translate issues & comments using Mistral
 
 on:
+  workflow_call:
   issues:
     types: [labeled]
   issue_comment:
