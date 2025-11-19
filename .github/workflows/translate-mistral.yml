@@ -109,7 +109,7 @@ jobs:
               messages: [
                 {
                   role: "system",
-                  content: "Detect whether the text is French or English. If French, translate to English. If English, translate to French. Respond only as JSON: {\"source\":\"fr/en\",\"target\":\"fr/en\",\"translation\":\"...\"}"
+                  content: "Detect whether the text is French or English. If French, translate to English. If English, translate to French. Respond ONLY with raw JSON (no markdown, no backticks, no code blocks): {\"source\":\"fr\" or \"en\",\"target\":\"fr\" or \"en\",\"translation\":\"translated text here\"}"
                 },
                 {
                   role: "user",
@@ -126,9 +126,20 @@ jobs:
 
           CONTENT=$(echo "$RESPONSE" | jq -r '.choices[0].message.content')
 
-          SRC=$(echo "$CONTENT"        | jq -r '.source')
-          TGT=$(echo "$CONTENT"        | jq -r '.target')
-          TRANSLATION=$(echo "$CONTENT" | jq -r '.translation')
+          # Nettoyer le contenu pour extraire le JSON pur (enlever les backticks markdown si présents)
+          CLEAN_CONTENT=$(echo "$CONTENT" | sed 's/```json//g' | sed 's/```//g' | tr -d '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+
+          # Vérifier que le JSON est valide avant de parser
+          if echo "$CLEAN_CONTENT" | jq empty 2>/dev/null; then
+            SRC=$(echo "$CLEAN_CONTENT" | jq -r '.source // "unknown"')
+            TGT=$(echo "$CLEAN_CONTENT" | jq -r '.target // "unknown"')
+            TRANSLATION=$(echo "$CLEAN_CONTENT" | jq -r '.translation // .text // ""')
+          else
+            # Fallback: utiliser le contenu brut comme traduction
+            SRC="unknown"
+            TGT="unknown"
+            TRANSLATION="$CONTENT"
+          fi
 
           # Déterminer l'en-tête adapté
           if [ "$SRC" = "fr" ] && [ "$TGT" = "en" ]; then
