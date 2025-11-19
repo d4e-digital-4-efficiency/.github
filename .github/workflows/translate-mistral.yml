@@ -8,12 +8,12 @@ on:
 
 jobs:
   translate_issue_append_en:
-    name: Append English translation when label EN is added
+    name: Append English translation when label en is added
     runs-on: ubuntu-latest
     if: >
       github.event_name == 'issues' &&
       github.event.action == 'labeled' &&
-      github.event.label.name == 'EN'
+      github.event.label.name == 'en'
     steps:
       - name: Install jq
         run: |
@@ -84,7 +84,7 @@ jobs:
     if: >
       github.event_name == 'issue_comment' &&
       github.event.action == 'created' &&
-      contains(github.event.issue.labels.*.name, 'EN') &&
+      contains(github.event.issue.labels.*.name, 'en') &&
       github.event.comment.user.type != 'Bot'
     steps:
       - name: Install jq
