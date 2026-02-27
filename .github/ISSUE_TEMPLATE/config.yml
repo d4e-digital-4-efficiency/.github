@@ -1,8 +1,5 @@
 blank_issues_enabled: true
 contact_links:
-  - name: 📌 Tableau de bord D4E (priorisation)
-    url: https://github.com/orgs/d4e-digital-4-efficiency/projects/5
-    about: Pour suivre l’avancement
-  - name: 📌 Wiki (bonnes pratiques, ...)
-    url: https://github.com/d4e-digital-4-efficiency/d4e-common-def/wiki
-    about: Pour plus d'informations
+  - name: 📌 Organisation D4E sur GitHub
+    url: https://github.com/d4e-digital-4-efficiency
+    about: Accéder à l'organisation D4E Digital4Efficiency
