@@ -196,7 +196,15 @@ mapping_path = os.path.join(os.path.dirname(__file__), "users_mapping.json")
 with open(mapping_path, "r") as f:
     users_mapping = json.load(f)
 
-employee_id = users_mapping.get(gh_author)
+user_entry = users_mapping.get(gh_author)
+
+first_name = None
+
+if isinstance(user_entry, dict):
+    employee_id = user_entry.get("employee_id")
+    first_name = user_entry.get("first_name")
+else:
+    employee_id = user_entry
 
 if not employee_id:
     msg = f"❌ Login GitHub '{gh_author}' absent du mapping users_mapping.json"
@@ -310,7 +318,13 @@ else:
 
 total_formatted = format_duration(new_total_minutes / 60.0)
 print(f"✅ Timesheet créé ! ID Odoo : {timesheet_id} — {duration:.2f}h sur tâche {task_id}")
+
+if first_name:
+    merci_suffix = f" Merci {first_name} !"
+else:
+    merci_suffix = ""
+
 post_issue_comment(
     f"✅ Pointage pris en compte. Tâche ID : **{task_id}**, temps : **{format_duration(duration)}** — "
-    f"**Pointage total : {total_formatted}**"
+    f"**Pointage total : {total_formatted}**{merci_suffix}"
 )

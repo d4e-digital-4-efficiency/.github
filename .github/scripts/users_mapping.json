@@ -1,14 +1,47 @@
 {
-    "_comment": "Mapping login GitHub → ID employé Odoo",
-    "d4e-ch": 2,
-    "le-koala": 12,
-    "rihabjl": 28,
-    "Amaladouwani": 36,
-    "floriand4e": 37,
-    "aminecampion": 40,
-    "Amelie-d4e": 45,
-    "Tony-D4E": 4,
-    "boubakrirajaaa": 49,
-    "remi-d4e": 97,
-    "geoffroy-d4e": 112
-  }
+    "_comment": "Mapping login GitHub → employé Odoo (ID + prénom)",
+    "d4e-ch": {
+        "employee_id": 2,
+        "first_name": "Alexandre"
+    },
+    "le-koala": {
+        "employee_id": 12,
+        "first_name": "Alexis"
+    },
+    "rihabjl": {
+        "employee_id": 28,
+        "first_name": "Rihab"
+    },
+    "Amaladouwani": {
+        "employee_id": 36,
+        "first_name": "Amal"
+    },
+    "floriand4e": {
+        "employee_id": 37,
+        "first_name": "Florian"
+    },
+    "aminecampion": {
+        "employee_id": 40,
+        "first_name": "Amine"
+    },
+    "Amelie-d4e": {
+        "employee_id": 45,
+        "first_name": "Amélie"
+    },
+    "Tony-D4E": {
+        "employee_id": 4,
+        "first_name": "Antonio"
+    },
+    "boubakrirajaaa": {
+        "employee_id": 49,
+        "first_name": "Raja"
+    },
+    "remi-d4e": {
+        "employee_id": 97,
+        "first_name": "Rémi"
+    },
+    "geoffroy-d4e": {
+        "employee_id": 112,
+        "first_name": "Geoffroy"
+    }
+}
