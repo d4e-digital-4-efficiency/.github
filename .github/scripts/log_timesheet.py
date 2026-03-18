@@ -2,6 +2,7 @@ import os
 import re
 import json
 import math
+import urllib.error
 import urllib.request
 import xmlrpc.client
 from datetime import datetime
@@ -84,7 +85,22 @@ query($owner: String!, $repo: String!, $issue_number: Int!) {
       title
       projectItems(first: 10) {
         nodes {
-          fieldValueByName(name: "Tâche ID") {
+          id
+          project {
+            id
+            fields(first: 30) {
+              nodes {
+                id
+                name
+              }
+            }
+          }
+          taskIdField: fieldValueByName(name: "Tâche ID") {
+            ... on ProjectV2ItemFieldNumberValue {
+              number
+            }
+          }
+          pointageTotalField: fieldValueByName(name: "Pointage total") {
             ... on ProjectV2ItemFieldNumberValue {
               number
             }
@@ -128,10 +144,32 @@ issue_data = result.get("data", {}).get("repository", {}).get("issue", {})
 issue_title = (issue_data.get("title") or "").strip().replace("\n", " ")
 items = issue_data.get("projectItems", {}).get("nodes", [])
 task_id = None
+item_id = None
+project_id = None
+pointage_total_minutes = 0
+pointage_total_field_id = None
+
 for item in items:
-    field_value = item.get("fieldValueByName")
-    if field_value and "number" in field_value:
-        task_id = int(field_value["number"])
+    task_id_val = item.get("taskIdField")
+    if task_id_val and "number" in task_id_val:
+        task_id = int(task_id_val["number"])
+        item_id = item.get("id")
+        project = item.get("project") or {}
+        project_id = project.get("id")
+        # Pointage total (en minutes) : vide → 0
+        pt_field = item.get("pointageTotalField")
+        if pt_field is not None and "number" in pt_field and pt_field["number"] is not None:
+            try:
+                pointage_total_minutes = int(float(pt_field["number"]))
+            except (TypeError, ValueError):
+                pointage_total_minutes = 0
+        else:
+            pointage_total_minutes = 0
+        # Champ "Pointage total" du projet pour la mutation
+        for f in (project.get("fields") or {}).get("nodes") or []:
+            if (f.get("name") or "").strip() == "Pointage total":
+                pointage_total_field_id = f.get("id")
+                break
         break
 
 if not task_id:
@@ -141,6 +179,7 @@ if not task_id:
     exit(1)
 
 print(f"📋 Tâche ID (depuis GitHub) : {task_id}")
+print(f"⏱️  Pointage total actuel : {pointage_total_minutes} min")
 
 # --- Chargement du mapping utilisateurs ---
 mapping_path = os.path.join(os.path.dirname(__file__), "users_mapping.json")
@@ -203,5 +242,60 @@ except Exception as e:
     post_issue_comment(msg)
     exit(1)
 
+# Pointage arrondi en minutes, ajouté au total
+duration_minutes = round(duration * 60)
+new_total_minutes = pointage_total_minutes + duration_minutes
+
+# Mise à jour du champ custom "Pointage total" sur l'item du projet
+if item_id and project_id and pointage_total_field_id:
+    mutation = """
+    mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $value: Float!) {
+      updateProjectV2ItemFieldValue(
+        input: {
+          projectId: $projectId
+          itemId: $itemId
+          fieldId: $fieldId
+          value: { number: $value }
+        }
+      ) {
+        projectV2Item { id }
+      }
+    }
+    """
+    payload_update = json.dumps({
+        "query": mutation,
+        "variables": {
+            "projectId": project_id,
+            "itemId": item_id,
+            "fieldId": pointage_total_field_id,
+            "value": float(new_total_minutes),
+        },
+    }).encode("utf-8")
+    req_update = urllib.request.Request(
+        "https://api.github.com/graphql",
+        data=payload_update,
+        headers={
+            "Authorization": f"Bearer {gh_pat}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req_update) as resp_update:
+            result_update = json.loads(resp_update.read().decode())
+        if "errors" in result_update:
+            print(f"⚠️ Champ 'Pointage total' non mis à jour : {result_update['errors']}")
+        else:
+            print(f"✅ Pointage total mis à jour : {new_total_minutes} min")
+    except urllib.error.HTTPError as e:
+        print(f"⚠️ Erreur lors de la mise à jour du pointage total : {e.code} {e.reason}")
+else:
+    if not pointage_total_field_id:
+        print("⚠️ Champ custom 'Pointage total' introuvable sur le projet — total non persisté")
+
+total_formatted = format_duration(new_total_minutes / 60.0)
 print(f"✅ Timesheet créé ! ID Odoo : {timesheet_id} — {duration:.2f}h sur tâche {task_id}")
-post_issue_comment(f"✅ Pointage pris en compte. Tâche ID : **{task_id}**, temps : **{format_duration(duration)}**")
+post_issue_comment(
+    f"✅ Pointage pris en compte. Tâche ID : **{task_id}**, temps : **{format_duration(duration)}** — "
+    f"**Pointage total : {total_formatted}**"
+)
