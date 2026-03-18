@@ -1,11 +1,7 @@
 # .github
 
-
-```
-
----
-
 ## Résumé de la structure finale
+
 ```
 TON_ORG/.github/                          ← repo central
 ├── .github/
@@ -20,28 +16,45 @@ TON_ORG/repo-projet-A/
 
 TON_ORG/repo-projet-B/
 └── .github/workflows/timesheet.yml      ← 5 lignes seulement
+```
 
+## Configuration des secrets
 
-Les 4 secrets Odoo (ODOO_URL, ODOO_DB, etc.) se mettent ici :
+### 1. Secrets d'organisation
+
+Les 4 secrets Odoo (`ODOO_URL`, `ODOO_DB`, etc.) se configurent ici :
+
+```
 github.com/TON_ORG
   → Settings
     → Secrets and variables
       → Actions
         → New organization secret
-⚠️ Pour chaque secret, choisis "All repositories" dans le champ Repository access pour qu'ils soient accessibles partout.
+```
 
-2. Secrets de repo (si besoin spécifique)
+> **Attention :** Pour chaque secret, choisir **"All repositories"** dans le champ *Repository access* pour qu'ils soient accessibles partout.
+
+### 2. Secrets de repo (si besoin spécifique)
+
 Si un repo a une instance Odoo différente, tu peux surcharger au niveau repo :
+
+```
 github.com/TON_ORG/mon-repo
   → Settings
     → Secrets and variables
       → Actions
         → New repository secret
+```
 
-Pourquoi ça fonctionne avec secrets: inherit
+## Pourquoi ça fonctionne avec `secrets: inherit`
+
 C'est la ligne clé dans le workflow de chaque repo :
-yamljobs:
+
+```yaml
+jobs:
   call-central:
     uses: TON_ORG/.github/.github/workflows/timesheet.yml@main
     secrets: inherit   # ← transmet tous les secrets org au workflow central
-Sans secrets: inherit, le workflow central n'aurait pas accès aux secrets. ✅
+```
+
+Sans `secrets: inherit`, le workflow central n'aurait pas accès aux secrets.

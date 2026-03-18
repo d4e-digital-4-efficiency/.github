@@ -4,5 +4,5 @@ on:
     types: [created]
 jobs:
   call-central:
-    uses: TON_ORG/.github/.github/workflows/timesheet.yml@main
+    uses: d4e-digital-4-efficiency/.github/.github/workflows/timesheet.yml@main
     secrets: inherit
