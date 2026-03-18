@@ -1,6 +1,7 @@
 import os
 import re
 import json
+import math
 import urllib.request
 import xmlrpc.client
 from datetime import datetime
@@ -17,24 +18,28 @@ gh_token      = os.environ["GITHUB_TOKEN"]
 gh_repo       = os.environ["GITHUB_REPOSITORY"]
 
 # --- Parsing du commentaire ---
-# Formats acceptés : @pointage 1h30, @pointage 2h, @pointage 1.5, @pointage 10
+# Formats acceptés : @pointage 1h30, @pointage 2h (heures) ; @pointage 45, @pointage 90 (minutes, pas de h)
 pattern_hm = r"@pointage\s+(\d+)h(\d+)"
 pattern_h = r"@pointage\s+(\d+)h\b"
-pattern_dec = r"@pointage\s+(\d+(?:\.\d+)?)\b"
+# Nombre seul (sans h après) = minutes
+pattern_minutes = r"@pointage\s+(\d+(?:\.\d+)?)(?!h)"
 
 match_hm = re.search(pattern_hm, comment, re.IGNORECASE)
 match_h = re.search(pattern_h, comment, re.IGNORECASE)
-match_dec = re.search(pattern_dec, comment, re.IGNORECASE)
+match_min = re.search(pattern_minutes, comment, re.IGNORECASE)
 
 if match_hm:
-    duration = int(match_hm.group(1)) + int(match_hm.group(2)) / 60.0
+    duration_h = int(match_hm.group(1)) + int(match_hm.group(2)) / 60.0
 elif match_h:
-    duration = float(match_h.group(1))
-elif match_dec:
-    duration = float(match_dec.group(1))
+    duration_h = float(match_h.group(1))
+elif match_min:
+    duration_h = float(match_min.group(1)) / 60.0
 else:
-    print("❌ Format invalide. Attendu : @pointage 1h30, @pointage 2h, @pointage 1.5 ou @pointage 10")
+    print("❌ Format invalide. Attendu : @pointage 1h30, @pointage 2h ou @pointage 45 (minutes)")
     exit(1)
+
+# Arrondi au 1/4 h supérieur
+duration = math.ceil(duration_h / 0.25) * 0.25
 
 print(f"⏱️  Durée  : {duration:.2f}h")
 print(f"👤 Auteur : {gh_author}")
@@ -46,6 +51,7 @@ graphql_query = """
 query($owner: String!, $repo: String!, $issue_number: Int!) {
   repository(owner: $owner, name: $repo) {
     issue(number: $issue_number) {
+      title
       projectItems(first: 10) {
         nodes {
           fieldValueByName(name: "Tâche ID") {
@@ -86,9 +92,10 @@ if "errors" in result:
     print(f"❌ Erreur GraphQL GitHub : {result['errors']}")
     exit(1)
 
+issue_data = result.get("data", {}).get("repository", {}).get("issue", {})
+issue_title = (issue_data.get("title") or "").strip().replace("\n", " ")
+items = issue_data.get("projectItems", {}).get("nodes", [])
 task_id = None
-items = (result.get("data", {}).get("repository", {})
-         .get("issue", {}).get("projectItems", {}).get("nodes", []))
 for item in items:
     field_value = item.get("fieldValueByName")
     if field_value and "number" in field_value:
@@ -144,7 +151,7 @@ timesheet_id = models.execute_kw(
     [{
         "task_id":     task_id,
         "unit_amount": duration,
-        "name":        f"[GitHub Issue #{issue_number}]",
+        "name":        f"[DEV] #{issue_number} {issue_title}",
         "date":        datetime.today().strftime("%Y-%m-%d"),
         "employee_id": employee_id,
     }]
