@@ -1,6 +1,7 @@
 import os
 import re
 import json
+import urllib.request
 import xmlrpc.client
 from datetime import datetime
 
@@ -12,24 +13,86 @@ odoo_password = os.environ["ODOO_PASSWORD"]
 comment       = os.environ["COMMENT_BODY"]
 gh_author     = os.environ["COMMENT_AUTHOR"]
 issue_number  = os.environ["ISSUE_NUMBER"]
+gh_token      = os.environ["GITHUB_TOKEN"]
+gh_repo       = os.environ["GITHUB_REPOSITORY"]
 
 # --- Parsing du commentaire ---
-# Format : @pointage 1h30 #TASK-123
-pattern = r"@pointage\s+(\d+)h(\d*)\s*(?:#([\w-]+))?"
+# Format : @pointage 1h30
+pattern = r"@pointage\s+(\d+)h(\d*)"
 match = re.search(pattern, comment, re.IGNORECASE)
 
 if not match:
-    print("❌ Format invalide. Attendu : @pointage 1h30 #TASK-123")
+    print("❌ Format invalide. Attendu : @pointage 1h30")
     exit(1)
 
 hours_raw   = int(match.group(1))
 minutes_raw = int(match.group(2)) if match.group(2) else 0
-task_ref    = match.group(3) or f"ISSUE-{issue_number}"
 duration    = hours_raw + minutes_raw / 60.0
 
-print(f"⏱️  Durée     : {duration:.2f}h")
-print(f"📋 Tâche     : {task_ref}")
-print(f"👤 Auteur    : {gh_author}")
+print(f"⏱️  Durée  : {duration:.2f}h")
+print(f"👤 Auteur : {gh_author}")
+
+# --- Récupération du champ custom "Tâche ID" depuis GitHub Projects v2 ---
+owner, repo = gh_repo.split("/")
+
+graphql_query = """
+query($owner: String!, $repo: String!, $issue_number: Int!) {
+  repository(owner: $owner, name: $repo) {
+    issue(number: $issue_number) {
+      projectItems(first: 10) {
+        nodes {
+          fieldValueByName(name: "Tâche ID") {
+            ... on ProjectV2ItemFieldNumberValue {
+              number
+            }
+          }
+        }
+      }
+    }
+  }
+}
+"""
+
+payload = json.dumps({
+    "query": graphql_query,
+    "variables": {
+        "owner": owner,
+        "repo": repo,
+        "issue_number": int(issue_number),
+    },
+}).encode("utf-8")
+
+req = urllib.request.Request(
+    "https://api.github.com/graphql",
+    data=payload,
+    headers={
+        "Authorization": f"Bearer {gh_token}",
+        "Content-Type": "application/json",
+    },
+    method="POST",
+)
+
+with urllib.request.urlopen(req) as resp:
+    result = json.loads(resp.read().decode())
+
+if "errors" in result:
+    print(f"❌ Erreur GraphQL GitHub : {result['errors']}")
+    exit(1)
+
+task_id = None
+items = (result.get("data", {}).get("repository", {})
+         .get("issue", {}).get("projectItems", {}).get("nodes", []))
+for item in items:
+    field_value = item.get("fieldValueByName")
+    if field_value and "number" in field_value:
+        task_id = int(field_value["number"])
+        break
+
+if not task_id:
+    print(f"❌ Champ 'Tâche ID' non renseigné sur l'issue #{issue_number}")
+    exit(1)
+
+print(f"📋 Tâche ID (depuis GitHub) : {task_id}")
 
 # --- Chargement du mapping utilisateurs ---
 mapping_path = os.path.join(os.path.dirname(__file__), "users_mapping.json")
@@ -54,18 +117,17 @@ if not uid:
 
 models = xmlrpc.client.ServerProxy(f"{odoo_url}/xmlrpc/2/object")
 
-# --- Recherche de la tâche ---
-task_ids = models.execute_kw(
+# --- Vérification de la tâche dans Odoo ---
+task_exists = models.execute_kw(
     odoo_db, uid, odoo_password,
     "project.task", "search",
-    [[["name", "ilike", task_ref]]]
+    [[["id", "=", task_id]]]
 )
 
-if not task_ids:
-    print(f"❌ Tâche '{task_ref}' introuvable dans Odoo")
+if not task_exists:
+    print(f"❌ Tâche ID {task_id} introuvable dans Odoo")
     exit(1)
 
-task_id = task_ids[0]
 print(f"✅ Tâche Odoo ID : {task_id}")
 
 # --- Création du timesheet ---
@@ -75,10 +137,10 @@ timesheet_id = models.execute_kw(
     [{
         "task_id":     task_id,
         "unit_amount": duration,
-        "name":        f"[GitHub Issue #{issue_number}] {task_ref}",
+        "name":        f"[GitHub Issue #{issue_number}]",
         "date":        datetime.today().strftime("%Y-%m-%d"),
         "employee_id": employee_id,
     }]
 )
 
-print(f"✅ Timesheet créé ! ID Odoo : {timesheet_id} — {duration:.2f}h sur '{task_ref}'")
+print(f"✅ Timesheet créé ! ID Odoo : {timesheet_id} — {duration:.2f}h sur tâche {task_id}")
