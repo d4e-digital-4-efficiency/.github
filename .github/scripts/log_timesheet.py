@@ -88,6 +88,22 @@ query($owner: String!, $repo: String!, $issue_number: Int!) {
           id
           project {
             id
+            fields(first: 50) {
+              nodes {
+                ... on ProjectV2Field {
+                  id
+                  name
+                }
+                ... on ProjectV2SingleSelectField {
+                  id
+                  name
+                }
+                ... on ProjectV2IterationField {
+                  id
+                  name
+                }
+              }
+            }
           }
           taskIdField: fieldValueByName(name: "Tâche ID") {
             ... on ProjectV2ItemFieldNumberValue {
@@ -97,12 +113,6 @@ query($owner: String!, $repo: String!, $issue_number: Int!) {
           pointageTotalField: fieldValueByName(name: "Pointage total") {
             ... on ProjectV2ItemFieldNumberValue {
               number
-              field {
-                ... on ProjectV2FieldCommon {
-                  id
-                  name
-                }
-              }
             }
           }
         }
@@ -158,18 +168,18 @@ for item in items:
         project_id = project.get("id")
         # Pointage total (en minutes) : vide → 0
         pt_field = item.get("pointageTotalField")
-        if pt_field is not None:
-            if "number" in pt_field and pt_field["number"] is not None:
-                try:
-                    pointage_total_minutes = int(float(pt_field["number"]))
-                except (TypeError, ValueError):
-                    pointage_total_minutes = 0
-            # Récupération du fieldId pour la mutation
-            field_info = pt_field.get("field") or {}
-            if (field_info.get("name") or "").strip() == "Pointage total":
-                pointage_total_field_id = field_info.get("id")
+        if pt_field is not None and "number" in pt_field and pt_field["number"] is not None:
+            try:
+                pointage_total_minutes = int(float(pt_field["number"]))
+            except (TypeError, ValueError):
+                pointage_total_minutes = 0
         else:
             pointage_total_minutes = 0
+        # fieldId depuis la liste des champs du projet (nom "Pointage total")
+        for node in (project.get("fields") or {}).get("nodes") or []:
+            if (node.get("name") or "").strip() == "Pointage total" and node.get("id"):
+                pointage_total_field_id = node["id"]
+                break
         break
 
 if not task_id:
