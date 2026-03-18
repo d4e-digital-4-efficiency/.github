@@ -17,17 +17,24 @@ gh_token      = os.environ["GITHUB_TOKEN"]
 gh_repo       = os.environ["GITHUB_REPOSITORY"]
 
 # --- Parsing du commentaire ---
-# Format : @pointage 1h30
-pattern = r"@pointage\s+(\d+)h(\d*)"
-match = re.search(pattern, comment, re.IGNORECASE)
+# Formats acceptés : @pointage 1h30, @pointage 2h, @pointage 1.5, @pointage 10
+pattern_hm = r"@pointage\s+(\d+)h(\d+)"
+pattern_h = r"@pointage\s+(\d+)h\b"
+pattern_dec = r"@pointage\s+(\d+(?:\.\d+)?)\b"
 
-if not match:
-    print("❌ Format invalide. Attendu : @pointage 1h30")
+match_hm = re.search(pattern_hm, comment, re.IGNORECASE)
+match_h = re.search(pattern_h, comment, re.IGNORECASE)
+match_dec = re.search(pattern_dec, comment, re.IGNORECASE)
+
+if match_hm:
+    duration = int(match_hm.group(1)) + int(match_hm.group(2)) / 60.0
+elif match_h:
+    duration = float(match_h.group(1))
+elif match_dec:
+    duration = float(match_dec.group(1))
+else:
+    print("❌ Format invalide. Attendu : @pointage 1h30, @pointage 2h, @pointage 1.5 ou @pointage 10")
     exit(1)
-
-hours_raw   = int(match.group(1))
-minutes_raw = int(match.group(2)) if match.group(2) else 0
-duration    = hours_raw + minutes_raw / 60.0
 
 print(f"⏱️  Durée  : {duration:.2f}h")
 print(f"👤 Auteur : {gh_author}")

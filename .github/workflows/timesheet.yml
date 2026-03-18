@@ -32,4 +32,4 @@ jobs:
           COMMENT_BODY: ${{ github.event.comment.body }}
           COMMENT_AUTHOR: ${{ github.event.comment.user.login }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
-        run: python scripts/log_timesheet.py
+        run: python .github/scripts/log_timesheet.py
