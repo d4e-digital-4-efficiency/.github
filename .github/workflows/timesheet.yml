@@ -7,6 +7,9 @@ jobs:
   log-time:
     if: contains(github.event.comment.body, '@pointage')
     runs-on: ubuntu-latest
+    permissions:
+      issues: write   # pour poster le commentaire sur l'issue (dépôt appelant)
+      contents: read # pour checkout
 
     steps:
       - name: Checkout du repo central .github
@@ -32,6 +35,6 @@ jobs:
           COMMENT_BODY: ${{ github.event.comment.body }}
           COMMENT_AUTHOR: ${{ github.event.comment.user.login }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+          GITHUB_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: python .github/scripts/log_timesheet.py
