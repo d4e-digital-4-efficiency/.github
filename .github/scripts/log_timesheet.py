@@ -88,14 +88,6 @@ query($owner: String!, $repo: String!, $issue_number: Int!) {
           id
           project {
             id
-            fields(first: 30) {
-              nodes {
-                ... on ProjectV2FieldCommon {
-                  id
-                  name
-                }
-              }
-            }
           }
           taskIdField: fieldValueByName(name: "Tâche ID") {
             ... on ProjectV2ItemFieldNumberValue {
@@ -105,6 +97,12 @@ query($owner: String!, $repo: String!, $issue_number: Int!) {
           pointageTotalField: fieldValueByName(name: "Pointage total") {
             ... on ProjectV2ItemFieldNumberValue {
               number
+              field {
+                ... on ProjectV2FieldCommon {
+                  id
+                  name
+                }
+              }
             }
           }
         }
@@ -160,18 +158,18 @@ for item in items:
         project_id = project.get("id")
         # Pointage total (en minutes) : vide → 0
         pt_field = item.get("pointageTotalField")
-        if pt_field is not None and "number" in pt_field and pt_field["number"] is not None:
-            try:
-                pointage_total_minutes = int(float(pt_field["number"]))
-            except (TypeError, ValueError):
-                pointage_total_minutes = 0
+        if pt_field is not None:
+            if "number" in pt_field and pt_field["number"] is not None:
+                try:
+                    pointage_total_minutes = int(float(pt_field["number"]))
+                except (TypeError, ValueError):
+                    pointage_total_minutes = 0
+            # Récupération du fieldId pour la mutation
+            field_info = pt_field.get("field") or {}
+            if (field_info.get("name") or "").strip() == "Pointage total":
+                pointage_total_field_id = field_info.get("id")
         else:
             pointage_total_minutes = 0
-        # Champ "Pointage total" du projet pour la mutation
-        for f in (project.get("fields") or {}).get("nodes") or []:
-            if (f.get("name") or "").strip() == "Pointage total":
-                pointage_total_field_id = f.get("id")
-                break
         break
 
 if not task_id:
