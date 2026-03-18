@@ -294,11 +294,16 @@ if item_id and project_id and pointage_total_field_id:
         with urllib.request.urlopen(req_update) as resp_update:
             result_update = json.loads(resp_update.read().decode())
         if "errors" in result_update:
+            err_msg = str(result_update["errors"])
             print(f"⚠️ Champ 'Pointage total' non mis à jour : {result_update['errors']}")
+            if "resource" in err_msg.lower() or "access" in err_msg.lower() or "scope" in err_msg.lower() or "permission" in err_msg.lower():
+                print("💡 Vérifiez que le secret GH_PAT a le scope « project » (Settings → Developer settings → Personal access tokens).")
         else:
             print(f"✅ Pointage total mis à jour : {new_total_minutes} min")
     except urllib.error.HTTPError as e:
         print(f"⚠️ Erreur lors de la mise à jour du pointage total : {e.code} {e.reason}")
+        if e.code == 401 or e.code == 403:
+            print("💡 Vérifiez que le secret GH_PAT a le scope « project » (écriture Projects v2).")
 else:
     if not pointage_total_field_id:
         print("⚠️ Champ custom 'Pointage total' introuvable sur le projet — total non persisté")

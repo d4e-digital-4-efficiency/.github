@@ -26,6 +26,7 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
+      # GH_PAT doit avoir le scope "project" pour mettre à jour le champ "Pointage total" (Projects v2).
       - name: Log timesheet to Odoo
         env:
           ODOO_URL: ${{ secrets.ODOO_URL }}
