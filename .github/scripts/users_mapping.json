@@ -1,0 +1,6 @@
+{
+    "_comment": "Mapping login GitHub → ID employé Odoo",
+    "john-doe": 42,
+    "jane-smith": 67,
+    "bob-martin": 15
+  }

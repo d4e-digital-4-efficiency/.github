@@ -1,0 +1,35 @@
+name: Timesheet Odoo (Central)
+
+on:
+  workflow_call:  # Permet d'être appelé depuis d'autres repos
+
+jobs:
+  log-time:
+    if: contains(github.event.comment.body, '@pointage')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout du repo central .github
+        uses: actions/checkout@v3
+        with:
+          repository: TON_ORG/.github
+          ref: main
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Log timesheet to Odoo
+        env:
+          ODOO_URL: ${{ secrets.ODOO_URL }}
+          ODOO_DB: ${{ secrets.ODOO_DB }}
+          ODOO_USERNAME: ${{ secrets.ODOO_USERNAME }}
+          ODOO_PASSWORD: ${{ secrets.ODOO_PASSWORD }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          COMMENT_AUTHOR: ${{ github.event.comment.user.login }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: python scripts/log_timesheet.py
