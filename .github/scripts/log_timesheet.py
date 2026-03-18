@@ -90,8 +90,10 @@ query($owner: String!, $repo: String!, $issue_number: Int!) {
             id
             fields(first: 30) {
               nodes {
-                id
-                name
+                ... on ProjectV2FieldCommon {
+                  id
+                  name
+                }
               }
             }
           }
