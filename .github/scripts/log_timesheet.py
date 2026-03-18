@@ -6,6 +6,33 @@ import urllib.request
 import xmlrpc.client
 from datetime import datetime
 
+def format_duration(hours_float):
+    """Formatte la durée en 00h00 (ex: 1.5 -> 1h30, 2.0 -> 2h00)."""
+    h = int(hours_float)
+    m = round((hours_float - h) * 60)
+    return f"{h}h{m:02d}" if m else f"{h}h00"
+
+def post_issue_comment(body):
+    """Poste un commentaire sur l'issue GitHub."""
+    owner, repo = gh_repo.split("/")
+    url = f"https://api.github.com/repos/{owner}/{repo}/issues/{issue_number}/comments"
+    payload = json.dumps({"body": body}).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {gh_token}",
+            "Accept": "application/vnd.github+json",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req) as resp:
+            json.loads(resp.read().decode())
+    except urllib.error.HTTPError as e:
+        print(f"⚠️ Impossible de poster le commentaire : {e.code} {e.reason}")
+
 # --- Variables d'environnement ---
 odoo_url      = os.environ["ODOO_URL"]
 odoo_db       = os.environ["ODOO_DB"]
@@ -35,7 +62,9 @@ elif match_h:
 elif match_min:
     duration_h = float(match_min.group(1)) / 60.0
 else:
-    print("❌ Format invalide. Attendu : @pointage 1h30, @pointage 2h ou @pointage 45 (minutes)")
+    msg = "❌ Format invalide. Attendu : @pointage 1h30, @pointage 2h ou @pointage 45 (minutes)"
+    print(msg)
+    post_issue_comment(msg)
     exit(1)
 
 # Arrondi au 1/4 h supérieur
@@ -89,7 +118,9 @@ with urllib.request.urlopen(req) as resp:
     result = json.loads(resp.read().decode())
 
 if "errors" in result:
-    print(f"❌ Erreur GraphQL GitHub : {result['errors']}")
+    msg = f"❌ Erreur GraphQL GitHub : {result['errors']}"
+    print(msg)
+    post_issue_comment(msg)
     exit(1)
 
 issue_data = result.get("data", {}).get("repository", {}).get("issue", {})
@@ -103,7 +134,9 @@ for item in items:
         break
 
 if not task_id:
-    print(f"❌ Champ 'Tâche ID' non renseigné sur l'issue #{issue_number}")
+    msg = f"❌ Champ 'Tâche ID' non renseigné sur l'issue #{issue_number}"
+    print(msg)
+    post_issue_comment(msg)
     exit(1)
 
 print(f"📋 Tâche ID (depuis GitHub) : {task_id}")
@@ -116,7 +149,9 @@ with open(mapping_path, "r") as f:
 employee_id = users_mapping.get(gh_author)
 
 if not employee_id:
-    print(f"❌ Login GitHub '{gh_author}' absent du mapping users_mapping.json")
+    msg = f"❌ Login GitHub '{gh_author}' absent du mapping users_mapping.json"
+    print(msg)
+    post_issue_comment(msg)
     exit(1)
 
 print(f"✅ Employé Odoo ID : {employee_id}")
@@ -126,7 +161,9 @@ common = xmlrpc.client.ServerProxy(f"{odoo_url}/xmlrpc/2/common")
 uid    = common.authenticate(odoo_db, odoo_user, odoo_password, {})
 
 if not uid:
-    print("❌ Authentification Odoo échouée")
+    msg = "❌ Authentification Odoo échouée"
+    print(msg)
+    post_issue_comment(msg)
     exit(1)
 
 models = xmlrpc.client.ServerProxy(f"{odoo_url}/xmlrpc/2/object")
@@ -139,22 +176,31 @@ task_exists = models.execute_kw(
 )
 
 if not task_exists:
-    print(f"❌ Tâche ID {task_id} introuvable dans Odoo")
+    msg = f"❌ Tâche ID {task_id} introuvable dans Odoo"
+    print(msg)
+    post_issue_comment(msg)
     exit(1)
 
 print(f"✅ Tâche Odoo ID : {task_id}")
 
 # --- Création du timesheet ---
-timesheet_id = models.execute_kw(
-    odoo_db, uid, odoo_password,
-    "account.analytic.line", "create",
-    [{
-        "task_id":     task_id,
-        "unit_amount": duration,
-        "name":        f"[DEV] #{issue_number} {issue_title}",
-        "date":        datetime.today().strftime("%Y-%m-%d"),
-        "employee_id": employee_id,
-    }]
-)
+try:
+    timesheet_id = models.execute_kw(
+        odoo_db, uid, odoo_password,
+        "account.analytic.line", "create",
+        [{
+            "task_id":     task_id,
+            "unit_amount": duration,
+            "name":        f"[DEV] #{issue_number} {issue_title}",
+            "date":        datetime.today().strftime("%Y-%m-%d"),
+            "employee_id": employee_id,
+        }]
+    )
+except Exception as e:
+    msg = f"❌ Erreur Odoo lors de la création du timesheet : {e}"
+    print(msg)
+    post_issue_comment(msg)
+    exit(1)
 
 print(f"✅ Timesheet créé ! ID Odoo : {timesheet_id} — {duration:.2f}h sur tâche {task_id}")
+post_issue_comment(f"✅ Pointage pris en compte. Tâche ID : **{task_id}**, temps : **{format_duration(duration)}**")
