@@ -13,7 +13,7 @@ def format_duration(hours_float):
     return f"{h}h{m:02d}" if m else f"{h}h00"
 
 def post_issue_comment(body):
-    """Poste un commentaire sur l'issue GitHub."""
+    """Poste un commentaire sur l'issue (utilise GITHUB_TOKEN, pas le PAT)."""
     owner, repo = gh_repo.split("/")
     url = f"https://api.github.com/repos/{owner}/{repo}/issues/{issue_number}/comments"
     payload = json.dumps({"body": body}).encode("utf-8")
@@ -41,7 +41,8 @@ odoo_password = os.environ["ODOO_PASSWORD"]
 comment       = os.environ["COMMENT_BODY"]
 gh_author     = os.environ["COMMENT_AUTHOR"]
 issue_number  = os.environ["ISSUE_NUMBER"]
-gh_token      = os.environ["GITHUB_TOKEN"]
+gh_token      = os.environ["GITHUB_TOKEN"]   # token par défaut → pour poster le commentaire
+gh_pat        = os.environ.get("GH_PAT") or gh_token  # PAT → pour GraphQL (custom fields Projects V2)
 gh_repo       = os.environ["GITHUB_REPOSITORY"]
 
 # --- Parsing du commentaire ---
@@ -108,7 +109,7 @@ req = urllib.request.Request(
     "https://api.github.com/graphql",
     data=payload,
     headers={
-        "Authorization": f"Bearer {gh_token}",
+        "Authorization": f"Bearer {gh_pat}",
         "Content-Type": "application/json",
     },
     method="POST",
