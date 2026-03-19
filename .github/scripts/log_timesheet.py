@@ -13,6 +13,37 @@ def format_duration(hours_float):
     m = round((hours_float - h) * 60)
     return f"{h}h{m:02d}" if m else f"{h}h00"
 
+def parse_planned_duration_from_label(label_name):
+    """
+    Extrait la durée prévue depuis un label de type "Durée : <2h", "Durée : < 30 min".
+    Retourne un float en heures, ou None si non exploitable (ex: ">16h").
+    """
+    if not label_name:
+        return None
+
+    normalized = label_name.strip().lower()
+    if not normalized.startswith("durée"):
+        return None
+
+    # On isole la partie après ":" si présente (sinon on garde tout)
+    value_part = normalized.split(":", 1)[1].strip() if ":" in normalized else normalized
+    compact = re.sub(r"\s+", "", value_part)
+
+    # Cas non borné supérieur (ex: >16h) => pas de "dépassement prévu" pertinent
+    if compact.startswith(">"):
+        return None
+
+    # Exemples gérés : "<30min", "<2h", "<12h(1,5j)"
+    match = re.match(r"^<(\d+(?:[.,]\d+)?)(min|h)\b", compact)
+    if not match:
+        return None
+
+    amount = float(match.group(1).replace(",", "."))
+    unit = match.group(2)
+    if unit == "min":
+        return amount / 60.0
+    return amount
+
 def post_issue_comment(body):
     """Poste un commentaire sur l'issue (utilise GITHUB_TOKEN, pas le PAT)."""
     owner, repo = gh_repo.split("/")
@@ -83,6 +114,11 @@ query($owner: String!, $repo: String!, $issue_number: Int!) {
   repository(owner: $owner, name: $repo) {
     issue(number: $issue_number) {
       title
+      labels(first: 50) {
+        nodes {
+          name
+        }
+      }
       projectItems(first: 10) {
         nodes {
           id
@@ -152,12 +188,23 @@ if "errors" in result:
 
 issue_data = result.get("data", {}).get("repository", {}).get("issue", {})
 issue_title = (issue_data.get("title") or "").strip().replace("\n", " ")
+labels = issue_data.get("labels", {}).get("nodes", [])
 items = issue_data.get("projectItems", {}).get("nodes", [])
 task_id = None
 item_id = None
 project_id = None
 pointage_total_minutes = 0
 pointage_total_field_id = None
+planned_duration_h = None
+planned_duration_label = None
+
+for label in labels:
+    label_name = (label.get("name") or "").strip()
+    parsed = parse_planned_duration_from_label(label_name)
+    if parsed is not None:
+        planned_duration_h = parsed
+        planned_duration_label = label_name
+        break
 
 for item in items:
     task_id_val = item.get("taskIdField")
@@ -324,7 +371,21 @@ if first_name:
 else:
     merci_suffix = ""
 
+warning_suffix = ""
+if planned_duration_h and (new_total_minutes / 60.0) > planned_duration_h:
+    overrun_ratio = ((new_total_minutes / 60.0) - planned_duration_h) / planned_duration_h
+    overrun_percent = round(overrun_ratio * 100)
+    warning_suffix = (
+        "\n\n> ⚠️ **Warning**\n"
+        f"> Le temps prévu pour cette issue était de **{format_duration(planned_duration_h)}**, "
+        f"il a été dépassé de **{overrun_percent}%**."
+    )
+    print(
+        f"⚠️ Dépassement durée prévue ({planned_duration_label}) : "
+        f"+{overrun_percent}% vs {format_duration(planned_duration_h)}"
+    )
+
 post_issue_comment(
     f"✅ Pointage pris en compte. Tâche ID : **{task_id}**, temps : **{format_duration(duration)}** — "
-    f"**Pointage total : {total_formatted}**{merci_suffix}"
+    f"**Pointage total : {total_formatted}**{merci_suffix}{warning_suffix}"
 )
