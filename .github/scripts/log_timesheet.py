@@ -206,6 +206,14 @@ for label in labels:
         planned_duration_label = label_name
         break
 
+if planned_duration_h is not None:
+    print(
+        f"🎯 Durée prévue détectée : {format_duration(planned_duration_h)} "
+        f"(label: {planned_duration_label})"
+    )
+else:
+    print("ℹ️ Aucune durée prévue exploitable détectée dans les labels")
+
 for item in items:
     task_id_val = item.get("taskIdField")
     if task_id_val and "number" in task_id_val:
