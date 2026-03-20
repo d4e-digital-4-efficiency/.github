@@ -1,0 +1,32 @@
+name: Deploy Timesheet Workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      repos:
+        description: 'Repos à cibler (séparés par des virgules)'
+        required: true
+        default: 'mon-repo-test-1, mon-repo-test-2'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo central
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Deploy workflow to repos
+        env:
+          GITHUB_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+          ORG_NAME: ${{ github.repository_owner }}
+          REPOS: ${{ github.event.inputs.repos }}
+        run: python scripts/deploy_timesheet.py
