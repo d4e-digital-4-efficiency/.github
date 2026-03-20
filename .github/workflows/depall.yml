@@ -1,12 +1,12 @@
-name: Deploy Timesheet Workflow
+name: Deploy Timesheet Workflow (All Repos)
 
 on:
   workflow_dispatch:
     inputs:
-      repos:
-        description: 'Repos à cibler (séparés par des virgules)'
-        required: true
-        default: 'welcome,LacavedeGeneveSA'
+      exclude:
+        description: 'Repos à exclure en plus (séparés par des virgules)'
+        required: false
+        default: ''
 
 jobs:
   deploy:
@@ -28,9 +28,9 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
-      - name: Deploy workflow to repos
+      - name: Deploy workflow to all repos
         env:
           GITHUB_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
           ORG_NAME: ${{ github.repository_owner }}
-          REPOS: ${{ github.event.inputs.repos }}
-        run: python scripts/deploy_timesheet.py
+          EXTRA_EXCLUDE: ${{ github.event.inputs.exclude }}
+        run: python scripts/deploy_timesheet_all.py
