@@ -13,9 +13,14 @@ def format_duration(hours_float):
     m = round((hours_float - h) * 60)
     return f"{h}h{m:02d}" if m else f"{h}h00"
 
+# Journée ouvrée pour les labels "Durée : < Xj" / "jours"
+PLANNED_DURATION_HOURS_PER_DAY = 8.0
+
+
 def parse_planned_duration_from_label(label_name):
     """
-    Extrait la durée prévue depuis un label de type "Durée : <2h", "Durée : < 30 min".
+    Extrait la durée prévue depuis un label de type "Durée : <2h", "Durée : < 30 min",
+    "Durée : < 2j", "Durée : <1,5jours".
     Retourne un float en heures, ou None si non exploitable (ex: ">16h").
     """
     if not label_name:
@@ -33,8 +38,8 @@ def parse_planned_duration_from_label(label_name):
     if compact.startswith(">"):
         return None
 
-    # Exemples gérés : "<30min", "<2h", "<12h(1,5j)"
-    match = re.match(r"^<(\d+(?:[.,]\d+)?)(min|h)\b", compact)
+    # Exemples gérés : "<30min", "<2h", "<2j", "<1,5jours", "<12h(1,5j)"
+    match = re.match(r"^<(\d+(?:[.,]\d+)?)(min|h|j(?:ours)?)\b", compact)
     if not match:
         return None
 
@@ -42,6 +47,8 @@ def parse_planned_duration_from_label(label_name):
     unit = match.group(2)
     if unit == "min":
         return amount / 60.0
+    if unit.startswith("j"):
+        return amount * PLANNED_DURATION_HOURS_PER_DAY
     return amount
 
 def post_issue_comment(body):
@@ -379,6 +386,18 @@ if first_name:
 else:
     merci_suffix = ""
 
+if planned_duration_h is not None:
+    duree_suffix = (
+        f"\n\n**Durée prévue :** {format_duration(planned_duration_h)} "
+        f"_(label : `{planned_duration_label}`)_"
+    )
+else:
+    duree_suffix = (
+        "\n\n> ⚠️ **Aucun label « Durée » exploitable** sur cette issue "
+        "(ex. `Durée : < 2h`, `Durée : < 2j`, `Durée : < 30 min`). "
+        "Sans ce label, la comparaison au prévisionnel et l’alerte de dépassement ne s’appliquent pas."
+    )
+
 warning_suffix = ""
 if planned_duration_h and (new_total_minutes / 60.0) > planned_duration_h:
     overrun_ratio = ((new_total_minutes / 60.0) - planned_duration_h) / planned_duration_h
@@ -395,5 +414,5 @@ if planned_duration_h and (new_total_minutes / 60.0) > planned_duration_h:
 
 post_issue_comment(
     f"✅ Pointage pris en compte. Tâche ID : **{task_id}**, temps : **{format_duration(duration)}** — "
-    f"**Pointage total : {total_formatted}**{merci_suffix}{warning_suffix}"
+    f"**Pointage total : {total_formatted}**{merci_suffix}{duree_suffix}{warning_suffix}"
 )
