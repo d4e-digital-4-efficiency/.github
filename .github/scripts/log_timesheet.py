@@ -121,6 +121,9 @@ query($owner: String!, $repo: String!, $issue_number: Int!) {
   repository(owner: $owner, name: $repo) {
     issue(number: $issue_number) {
       title
+      author {
+        login
+      }
       labels(first: 50) {
         nodes {
           name
@@ -195,6 +198,7 @@ if "errors" in result:
 
 issue_data = result.get("data", {}).get("repository", {}).get("issue", {})
 issue_title = (issue_data.get("title") or "").strip().replace("\n", " ")
+issue_author_login = (issue_data.get("author") or {}).get("login")
 labels = issue_data.get("labels", {}).get("nodes", [])
 items = issue_data.get("projectItems", {}).get("nodes", [])
 task_id = None
@@ -246,6 +250,11 @@ for item in items:
 
 if not task_id:
     msg = f"❌ Champ 'Tâche ID' non renseigné sur l'issue #{issue_number}"
+    if issue_author_login:
+        msg += (
+            f"\n\n@{issue_author_login} Merci de renseigner le champ **Tâche ID** "
+            "dans le projet GitHub pour que le pointage puisse être enregistré."
+        )
     print(msg)
     post_issue_comment(msg)
     exit(1)
