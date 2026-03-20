@@ -33,4 +33,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.DEPLOY_TOKEN || github.token }}
           ORG_NAME: ${{ github.repository_owner }}
           REPOS: ${{ github.event.inputs.repos }}
-        run: python scripts/deploy_timesheet.py
+        run: python .github/scripts/deploy_timesheet.py
