@@ -19,19 +19,19 @@ PLANNED_DURATION_HOURS_PER_DAY = 8.0
 
 def parse_planned_duration_from_label(label_name):
     """
-    Extrait la durée prévue depuis un label de type "Durée : <2h", "Durée : < 30 min",
-    "Durée : < 2j", "Durée : <1,5jours".
+    Extrait la durée prévue depuis un label de type "Durée : <2h", "Durée <4h",
+    "Durée : < 30 min", "Durée : < 2j", "Durée : <1,5jours".
     Retourne un float en heures, ou None si non exploitable (ex: ">16h").
     """
     if not label_name:
         return None
 
     normalized = label_name.strip().lower()
-    if not normalized.startswith("durée"):
+    if not (normalized.startswith("durée") or normalized.startswith("duree")):
         return None
 
-    # On isole la partie après ":" si présente (sinon on garde tout)
-    value_part = normalized.split(":", 1)[1].strip() if ":" in normalized else normalized
+    # Accepte les variantes avec/sans ":" : "Durée : <2h", "Durée <4h", "Duree<30min"
+    value_part = re.sub(r"^dur[ée]e\s*:?\s*", "", normalized, count=1).strip()
     compact = re.sub(r"\s+", "", value_part)
 
     # Cas non borné supérieur (ex: >16h) => pas de "dépassement prévu" pertinent
@@ -393,7 +393,7 @@ if planned_duration_h is not None:
 else:
     duree_suffix = (
         "\n\n> ⚠️ **Aucun label « Durée » exploitable** sur cette issue "
-        "(ex. `Durée : < 2h`, `Durée : < 2j`, `Durée : < 30 min`). "
+        "(ex. `Durée <4h`, `Durée : < 2h`, `Durée : < 2j`, `Durée : < 30 min`). "
         "Sans ce label, la comparaison au prévisionnel et l’alerte de dépassement ne s’appliquent pas."
     )
 
