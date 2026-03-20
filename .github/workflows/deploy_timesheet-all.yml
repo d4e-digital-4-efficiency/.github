@@ -17,7 +17,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           repository: ${{ github.repository_owner }}/.github
-          token: ${{ secrets.DEPLOY_TOKEN }}
+          token: ${{ secrets.DEPLOY_TOKEN || github.token }}
           ref: main
 
       - name: Setup Python
@@ -30,7 +30,7 @@ jobs:
 
       - name: Deploy workflow to all repos
         env:
-          GITHUB_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.DEPLOY_TOKEN || github.token }}
           ORG_NAME: ${{ github.repository_owner }}
           EXTRA_EXCLUDE: ${{ github.event.inputs.exclude }}
         run: python scripts/deploy_timesheet_all.py
