@@ -219,7 +219,7 @@ if planned_duration_h is not None:
         f"(label: {planned_duration_label})"
     )
 else:
-    print("ℹ️ Aucune durée prévue exploitable détectée dans les labels")
+    print("ℹ️ Aucune durée max exploitable détectée dans les labels")
 
 for item in items:
     task_id_val = item.get("taskIdField")
@@ -382,14 +382,13 @@ total_formatted = format_duration(new_total_minutes / 60.0)
 print(f"✅ Timesheet créé ! ID Odoo : {timesheet_id} — {duration:.2f}h sur tâche {task_id}")
 
 if first_name:
-    merci_suffix = f" Merci {first_name} !"
+    merci_suffix = f"\nMerci {first_name} !"
 else:
     merci_suffix = ""
 
 if planned_duration_h is not None:
     duree_suffix = (
-        f"\n\n**Durée prévue :** {format_duration(planned_duration_h)} "
-        f"_(label : `{planned_duration_label}`)_"
+        f"\n\n**Durée max :** {format_duration(planned_duration_h)}"
     )
 else:
     duree_suffix = (
@@ -404,11 +403,11 @@ if planned_duration_h and (new_total_minutes / 60.0) > planned_duration_h:
     overrun_percent = round(overrun_ratio * 100)
     warning_suffix = (
         "\n\n> ⚠️ **Warning**\n"
-        f"> Le temps prévu pour cette issue était de **{format_duration(planned_duration_h)}**, "
+        f"> Le temps max pour cette issue était de **{format_duration(planned_duration_h)}**, "
         f"il a été dépassé de **{overrun_percent}%**."
     )
     print(
-        f"⚠️ Dépassement durée prévue ({planned_duration_label}) : "
+        f"⚠️ Dépassement durée max ({planned_duration_label}) : "
         f"+{overrun_percent}% vs {format_duration(planned_duration_h)}"
     )
 
