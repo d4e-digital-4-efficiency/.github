@@ -13,11 +13,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Validate required secret
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          if [ -z "$GH_PAT" ]; then
+            echo "GH_PAT is required for cross-repository deployment."
+            exit 1
+          fi
+
       - name: Checkout repo central
         uses: actions/checkout@v3
         with:
           repository: ${{ github.repository_owner }}/.github
-          token: ${{ secrets.DEPLOY_TOKEN || github.token }}
+          token: ${{ secrets.GH_PAT }}
           ref: main
 
       - name: Setup Python
@@ -30,7 +39,7 @@ jobs:
 
       - name: Deploy workflow to all repos
         env:
-          GITHUB_TOKEN: ${{ secrets.DEPLOY_TOKEN || github.token }}
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
           ORG_NAME: ${{ github.repository_owner }}
           EXTRA_EXCLUDE: ${{ github.event.inputs.exclude }}
         run: python .github/scripts/deploy_timesheet_all.py

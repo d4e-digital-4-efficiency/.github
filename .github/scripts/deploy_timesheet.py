@@ -6,7 +6,6 @@ import os
 # --- Configuration ---
 ORG_NAME     = os.environ["ORG_NAME"]
 GITHUB_TOKEN = os.environ["GITHUB_TOKEN"]
-BRANCH       = "main"
 FILE_PATH    = ".github/workflows/timesheet.yml"
 
 # --- Repos ciblés (passés depuis le formulaire GitHub Actions) ---
@@ -33,14 +32,22 @@ content_b64 = base64.b64encode(WORKFLOW_CONTENT.encode()).decode()
 print(f"🎯 Déploiement sur {len(INCLUDE)} repo(s) : {', '.join(INCLUDE)}\n")
 
 for repo_name in INCLUDE:
-    url = f"https://api.github.com/repos/{ORG_NAME}/{repo_name}/contents/{FILE_PATH}"
+    repo_name = repo_name.strip()
+    repo_url = f"https://api.github.com/repos/{ORG_NAME}/{repo_name}"
+    repo_info = requests.get(repo_url, headers=headers)
 
-    existing = requests.get(url, headers=headers, params={"ref": BRANCH})
+    if repo_info.status_code != 200:
+        print(f"❌ {repo_name} — accès repo impossible : {repo_info.json().get('message')}")
+        continue
+
+    branch = repo_info.json().get("default_branch", "main")
+    url = f"{repo_url}/contents/{FILE_PATH}"
+    existing = requests.get(url, headers=headers, params={"ref": branch})
 
     payload = {
         "message": "ci: add timesheet workflow",
         "content": content_b64,
-        "branch": BRANCH
+        "branch": branch
     }
 
     if existing.status_code == 200:
@@ -51,7 +58,7 @@ for repo_name in INCLUDE:
 
     if result.status_code in (200, 201):
         action = "mis à jour" if existing.status_code == 200 else "créé"
-        print(f"✅ {repo_name} — fichier {action}")
+        print(f"✅ {repo_name} — fichier {action} (branche {branch})")
     else:
         print(f"❌ {repo_name} — erreur : {result.json().get('message')}")
 
