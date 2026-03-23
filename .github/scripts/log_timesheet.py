@@ -13,6 +13,22 @@ def format_duration(hours_float):
     m = round((hours_float - h) * 60)
     return f"{h}h{m:02d}" if m else f"{h}h00"
 
+
+def normalize_comment_body_for_pointage(text):
+    """
+    Retire les caractères invisibles (copier-coller) et unifie les espaces,
+    pour que la durée après @pointage soit reconnue.
+    """
+    if not text:
+        return text
+    for ch in ("\u200b", "\u200c", "\u200d", "\ufeff", "\u2060"):
+        text = text.replace(ch, "")
+    return text.replace("\xa0", " ").replace("\u202f", " ")
+
+
+# Préfixe : @pointage ou lien Markdown [@pointage](https://...)
+POINTAGE_PREFIX = r"(?:@pointage|\[@pointage\]\([^)]*\))"
+
 # Journée ouvrée pour les labels "Durée : < Xj" / "jours"
 PLANNED_DURATION_HOURS_PER_DAY = 8.0
 
@@ -77,7 +93,7 @@ odoo_url      = os.environ["ODOO_URL"]
 odoo_db       = os.environ["ODOO_DB"]
 odoo_user     = os.environ["ODOO_USERNAME"]
 odoo_password = os.environ["ODOO_PASSWORD"]
-comment       = os.environ["COMMENT_BODY"]
+comment       = normalize_comment_body_for_pointage(os.environ["COMMENT_BODY"])
 gh_author     = os.environ["COMMENT_AUTHOR"]
 issue_number  = os.environ["ISSUE_NUMBER"]
 gh_token      = os.environ["GITHUB_TOKEN"]   # token par défaut → pour poster le commentaire
@@ -85,24 +101,29 @@ gh_pat        = os.environ.get("GH_PAT") or gh_token  # PAT → pour GraphQL (cu
 gh_repo       = os.environ["GITHUB_REPOSITORY"]
 
 # --- Parsing du commentaire ---
-# Formats acceptés : @pointage 1h30, @pointage 2h (heures) ; @pointage 45, @pointage 90 (minutes, pas de h)
-pattern_hm = r"@pointage\s+(\d+)h(\d+)"
-pattern_h = r"@pointage\s+(\d+)h\b"
-# Nombre seul (sans h après) = minutes
-pattern_minutes = r"@pointage\s+(\d+(?:\.\d+)?)(?!h)"
+# Formats : @pointage … ou [@pointage](url) … puis 1h30, 1 h 30, 1:30, 2h, ou 45 (minutes)
+pattern_hm = POINTAGE_PREFIX + r"\s+(\d+)\s*h\s*(\d+)"
+pattern_colon = POINTAGE_PREFIX + r"\s+(\d+)\s*:\s*(\d+)"
+pattern_h = POINTAGE_PREFIX + r"\s+(\d+)\s*h\b"
+pattern_minutes = POINTAGE_PREFIX + r"\s+(\d+(?:\.\d+)?)(?!h)"
 
 match_hm = re.search(pattern_hm, comment, re.IGNORECASE)
+match_colon = re.search(pattern_colon, comment, re.IGNORECASE)
 match_h = re.search(pattern_h, comment, re.IGNORECASE)
 match_min = re.search(pattern_minutes, comment, re.IGNORECASE)
 
 if match_hm:
     duration_h = int(match_hm.group(1)) + int(match_hm.group(2)) / 60.0
+elif match_colon:
+    duration_h = int(match_colon.group(1)) + int(match_colon.group(2)) / 60.0
 elif match_h:
     duration_h = float(match_h.group(1))
 elif match_min:
     duration_h = float(match_min.group(1)) / 60.0
 else:
-    msg = "❌ Format invalide. Attendu : @pointage 1h30, @pointage 2h ou @pointage 45 (minutes)"
+    msg = (
+        "❌ Format invalide. Attendu : @pointage 1h30, @pointage 2h ou @pointage 45"
+    )
     print(msg)
     post_issue_comment(msg)
     exit(1)
