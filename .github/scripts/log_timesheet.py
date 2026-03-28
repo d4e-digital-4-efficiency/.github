@@ -295,8 +295,10 @@ first_name = None
 if isinstance(user_entry, dict):
     employee_id = user_entry.get("employee_id")
     first_name = user_entry.get("first_name")
+    exclude_from_total = user_entry.get("exclude_from_total", False)
 else:
     employee_id = user_entry
+    exclude_from_total = False
 
 if not employee_id:
     msg = f"❌ Login GitHub '{gh_author}' absent du mapping users_mapping.json"
@@ -352,12 +354,16 @@ except Exception as e:
     post_issue_comment(msg)
     exit(1)
 
-# Pointage arrondi en minutes, ajouté au total
+# Pointage arrondi en minutes, ajouté au total (sauf si l'utilisateur est exclu)
 duration_minutes = round(duration * 60)
-new_total_minutes = pointage_total_minutes + duration_minutes
+if exclude_from_total:
+    new_total_minutes = pointage_total_minutes
+    print(f"ℹ️ Utilisateur '{gh_author}' exclu du pointage total (exclude_from_total=true)")
+else:
+    new_total_minutes = pointage_total_minutes + duration_minutes
 
-# Mise à jour du champ custom "Pointage total" sur l'item du projet
-if item_id and project_id and pointage_total_field_id:
+# Mise à jour du champ custom "Pointage total" sur l'item du projet (seulement si le total a changé)
+if not exclude_from_total and item_id and project_id and pointage_total_field_id:
     mutation = """
     mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $value: Float!) {
       updateProjectV2ItemFieldValue(
@@ -411,6 +417,10 @@ else:
 total_formatted = format_duration(new_total_minutes / 60.0)
 print(f"✅ Timesheet créé ! ID Odoo : {timesheet_id} — {duration:.2f}h sur tâche {task_id}")
 
+exclude_note = ""
+if exclude_from_total:
+    exclude_note = "\n\n> ℹ️ Ce pointage n'est **pas comptabilisé** dans le total de l'issue (utilisateur exclu du total)."
+
 if first_name:
     merci_suffix = f"\nMerci {first_name} !"
 else:
@@ -443,5 +453,5 @@ if planned_duration_h and (new_total_minutes / 60.0) > planned_duration_h:
 
 post_issue_comment(
     f"✅ Pointage pris en compte. Tâche ID : **{task_id}**, temps : **{format_duration(duration)}** — "
-    f"**Pointage total : {total_formatted}**{merci_suffix}{duree_suffix}{warning_suffix}"
+    f"**Pointage total : {total_formatted}**{merci_suffix}{exclude_note}{duree_suffix}{warning_suffix}"
 )
