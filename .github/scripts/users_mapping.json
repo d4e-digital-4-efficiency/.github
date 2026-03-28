@@ -34,7 +34,8 @@
     },
     "Tony-D4E": {
         "employee_id": 4,
-        "first_name": "Antonio"
+        "first_name": "Antonio",
+        "exclude_from_total": true
     },
     "boubakrirajaaa": {
         "employee_id": 49,
