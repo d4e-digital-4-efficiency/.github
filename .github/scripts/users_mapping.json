@@ -2,11 +2,13 @@
     "_comment": "Mapping login GitHub → employé Odoo (ID + prénom). exclude_from_total: true → le temps est envoyé à Odoo mais n'impacte pas le pointage total de l'issue",
     "d4e-ch": {
         "employee_id": 2,
-        "first_name": "Alexandre"
+        "first_name": "Alexandre",
+        "exclude_from_total": true
     },
     "Le-Koala": {
         "employee_id": 12,
-        "first_name": "Alexis"
+        "first_name": "Alexis",
+        "exclude_from_total": true
     },
     "rihabjl": {
         "employee_id": 28,
@@ -18,7 +20,8 @@
     },
     "floriand4e": {
         "employee_id": 37,
-        "first_name": "Florian"
+        "first_name": "Florian",
+        "exclude_from_total": true
     },
     "aminecampion": {
         "employee_id": 40,
@@ -26,11 +29,13 @@
     },
     "Amelie-d4e": {
         "employee_id": 45,
-        "first_name": "Amélie"
+        "first_name": "Amélie",
+        "exclude_from_total": true
     },
     "Tony-D4E": {
         "employee_id": 4,
-        "first_name": "Antonio"
+        "first_name": "Antonio",
+        "exclude_from_total": true
     },
     "boubakrirajaaa": {
         "employee_id": 49,
@@ -38,10 +43,12 @@
     },
     "remi-d4e": {
         "employee_id": 97,
-        "first_name": "Rémi"
+        "first_name": "Rémi",
+        "exclude_from_total": true
     },
     "geoffroy-d4e": {
         "employee_id": 112,
-        "first_name": "Geoffroy"
+        "first_name": "Geoffroy",
+        "exclude_from_total": true
     }
 }
