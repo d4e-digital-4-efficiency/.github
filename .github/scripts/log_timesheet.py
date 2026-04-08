@@ -99,6 +99,7 @@ issue_number  = os.environ["ISSUE_NUMBER"]
 gh_token      = os.environ["GITHUB_TOKEN"]   # token par défaut → pour poster le commentaire
 gh_pat        = os.environ.get("GH_PAT") or gh_token  # PAT → pour GraphQL (custom fields Projects V2)
 gh_repo       = os.environ["GITHUB_REPOSITORY"]
+github_issue_url = f"https://github.com/{gh_repo}/issues/{issue_number}"
 
 # --- Parsing du commentaire ---
 # Formats : @pointage … ou [@pointage](url) … puis 1h30, 1 h 30, 1:30, 2h, ou 45 (minutes)
@@ -346,6 +347,7 @@ try:
             "name":        f"[DEV] #{issue_number} {issue_title}",
             "date":        datetime.today().strftime("%Y-%m-%d"),
             "employee_id": employee_id,
+            "github_issue_url": github_issue_url,
         }]
     )
 except Exception as e:
