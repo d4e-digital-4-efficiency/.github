@@ -32,6 +32,21 @@ POINTAGE_PREFIX = r"(?:@pointage|\[@pointage\]\([^)]*\))"
 # Journée ouvrée pour les labels "Durée : < Xj" / "jours"
 PLANNED_DURATION_HOURS_PER_DAY = 8.0
 
+# Lien formulaire tâche Odoo (id dans le fragment #id=)
+ODOO_TASK_FORM_URL_TMPL = (
+    "https://odoo.d4e.app/web?debug=1"
+    "#id={task_id}&cids=1&menu_id=1071&action=1676&model=project.task&view_type=form"
+)
+
+
+def odoo_task_form_url(task_id):
+    return ODOO_TASK_FORM_URL_TMPL.format(task_id=task_id)
+
+
+def task_id_github_markdown(task_id):
+    """Lien Markdown GitHub vers la fiche tâche Odoo."""
+    return f"[**{task_id}**]({odoo_task_form_url(task_id)})"
+
 
 def parse_planned_duration_from_label(label_name):
     """
@@ -281,7 +296,9 @@ if not task_id:
     post_issue_comment(msg)
     exit(1)
 
-print(f"📋 Tâche ID (depuis GitHub) : {task_id}")
+print(
+    f"📋 Tâche ID (depuis GitHub) : {task_id} — {odoo_task_form_url(task_id)}"
+)
 print(f"⏱️  Pointage total actuel : {pointage_total_minutes} min")
 
 # --- Chargement du mapping utilisateurs ---
@@ -329,12 +346,15 @@ task_exists = models.execute_kw(
 )
 
 if not task_exists:
-    msg = f"❌ Tâche ID {task_id} introuvable dans Odoo"
-    print(msg)
-    post_issue_comment(msg)
+    print(
+        f"❌ Tâche ID {task_id} introuvable dans Odoo — {odoo_task_form_url(task_id)}"
+    )
+    post_issue_comment(
+        f"❌ Tâche ID {task_id_github_markdown(task_id)} introuvable dans Odoo"
+    )
     exit(1)
 
-print(f"✅ Tâche Odoo ID : {task_id}")
+print(f"✅ Tâche Odoo ID : {task_id} — {odoo_task_form_url(task_id)}")
 
 # --- Création du timesheet ---
 try:
@@ -417,7 +437,10 @@ else:
         print("⚠️ Champ custom 'Pointage total' introuvable sur le projet — total non persisté")
 
 total_formatted = format_duration(new_total_minutes / 60.0)
-print(f"✅ Timesheet créé ! ID Odoo : {timesheet_id} — {duration:.2f}h sur tâche {task_id}")
+print(
+    f"✅ Timesheet créé ! ID Odoo : {timesheet_id} — {duration:.2f}h sur tâche "
+    f"{task_id} — {odoo_task_form_url(task_id)}"
+)
 
 exclude_note = ""
 if exclude_from_total:
@@ -454,6 +477,7 @@ if planned_duration_h and (new_total_minutes / 60.0) > planned_duration_h:
     )
 
 post_issue_comment(
-    f"✅ Pointage pris en compte. Tâche ID : **{task_id}**, temps : **{format_duration(duration)}** — "
+    f"✅ Pointage pris en compte. Tâche ID : {task_id_github_markdown(task_id)}, "
+    f"temps : **{format_duration(duration)}** — "
     f"**Pointage total : {total_formatted}**{merci_suffix}{exclude_note}{duree_suffix}{warning_suffix}"
 )
