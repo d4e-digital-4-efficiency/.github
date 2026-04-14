@@ -124,16 +124,16 @@ VERSION_RE = re.compile(
 )
 
 MANIFEST_VERSION_RE = re.compile(
-    r"['\"]version['\"]\s*:\s*['\"]"
+    r"'version'\s*:\s*'"
     r"((?:\d+)\.(?:\d+)\.(?:\d+)\.(?:\d+)\.(?:\d+))"
-    r"['\"]",
+    r"'",
     re.IGNORECASE,
 )
 
 MANIFEST_LEGACY_VERSION_RE = re.compile(
-    r"['\"]version['\"]\s*:\s*['\"]"
+    r"'version'\s*:\s*'"
     r"(\d+)\.(?:\d+)\.(?:\d+)"
-    r"['\"]",
+    r"'",
     re.IGNORECASE,
 )
 
@@ -318,13 +318,14 @@ def checkout_branch(repo_path, branch):
     _git(repo_path, "pull", "origin", branch)
 
 
-def create_branch(repo_path, branch, base_branch):
-    """Crée une branche locale depuis la branche courante et push."""
+def create_branch(repo_path, branch):
+    """Crée une branche locale depuis la branche courante, push et pull."""
     # Supprimer la branche locale si elle existe déjà
     _git(repo_path, "branch", "-D", branch)
     _git(repo_path, "checkout", "-b", branch)
     # Push (peut échouer si la branche existe déjà sur remote, c'est OK)
     _git(repo_path, "push", "-u", "origin", branch)
+    _git(repo_path, "pull", "origin", branch)
 
 
 def stage_all(repo_path):
@@ -397,7 +398,7 @@ def replicate_with_source_stream(repo_path, zipball_stream):
 
 def find_existing_pr(owner, repo_name, head_branch):
     """Cherche une PR ouverte existante pour la branche donnée."""
-    prs = gh_api(f"/repos/{owner}/{repo_name}/pulls?state=open&per_page=100")
+    prs = gh_api_paginated(f"/repos/{owner}/{repo_name}/pulls?state=open")
     for pr in prs:
         if pr["head"]["ref"] == head_branch:
             return pr
@@ -479,8 +480,7 @@ def generate_dashboard(releases_dict, repo_details):
     lines.append("| Repository | Manager | Production | Staging |")
     lines.append("| :--------- | :------ | ---------: | ------: |")
 
-    sorted_details = sorted(repo_details, key=lambda d: (d["prod_version"] or "", d["name"]), reverse=True)
-    # Trier d'abord par version prod desc, puis par nom asc pour les ex-aequo
+    # Trier par version prod desc, puis par nom asc pour les ex-aequo
     sorted_details = sorted(repo_details, key=lambda d: d["name"])
     sorted_details = sorted(sorted_details, key=lambda d: d["prod_version"] or "", reverse=True)
 
@@ -488,7 +488,7 @@ def generate_dashboard(releases_dict, repo_details):
         fire = ""
         construction_tag = f"construction-v{d['prod_version']}"
         if construction_tag not in releases_dict:
-            fire = "🔥 "
+            fire = ":fire: "
         manager = d.get("manager") or ""
         lines.append(
             f"| [{d['name']}]({d['url']}) | {manager} | {fire}{d['prod_version']} | {d['staging_version']} |"
@@ -567,7 +567,7 @@ def handle_repository(owner, repo_name, repo_html_url, clone_url, source_release
         checkout_branch(temp_dir, staging_branch)
 
         print(f"  Création de la branche {BOT_BRANCH}...")
-        create_branch(temp_dir, BOT_BRANCH, staging_branch)
+        create_branch(temp_dir, BOT_BRANCH)
 
         print(f"  Téléchargement du zipball...")
         zipball = gh_download_stream(latest_release["zipball_url"])
@@ -638,7 +638,7 @@ def main():
     print()
 
     # Récupérer tous les repos privés non archivés de l'organisation
-    all_repos = gh_api_paginated(f"/orgs/{SOURCE_OWNER}/repos?type=all")
+    all_repos = gh_api_paginated(f"/orgs/{SOURCE_OWNER}/repos?type=private")
     repos = [r for r in all_repos if not r.get("archived", False)]
     print(f"{len(repos)} repo(s) non archivé(s) trouvé(s)")
     print()
