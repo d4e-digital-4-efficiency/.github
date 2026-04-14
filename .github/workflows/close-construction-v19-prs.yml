@@ -8,6 +8,7 @@ on:
         required: true
         type: choice
         options:
+          - v17
           - v18
           - v19
 
