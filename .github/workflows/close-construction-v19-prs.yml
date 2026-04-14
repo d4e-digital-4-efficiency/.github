@@ -1,7 +1,15 @@
-name: Fermer les PRs "Update to construction-v19"
+name: Fermer les PRs "Update to construction"
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Version cible (ex: v18, v19)"
+        required: true
+        type: choice
+        options:
+          - v18
+          - v19
 
 jobs:
   close-prs:
@@ -11,18 +19,27 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
           ORG: d4e-digital-4-efficiency
+          VERSION: ${{ inputs.version }}
         run: |
-          echo "🔍 Recherche des PRs ouvertes commençant par 'Update to construction-v19'..."
+          PREFIX="Update to construction-$VERSION"
+          echo "🔍 Recherche des PRs ouvertes commençant par '$PREFIX'..."
 
-          # Récupérer tous les repos non archivés de l'org
-          repos=$(gh repo list "$ORG" --no-archived --limit 500 --json name -q '.[].name')
+          # Récupérer tous les repos non archivés de l'org (API REST, pagination)
+          repos=""
+          page=1
+          while true; do
+            batch=$(gh api "orgs/$ORG/repos?type=all&per_page=100&page=$page" -q '.[] | select(.archived == false) | .name')
+            [ -z "$batch" ] && break
+            repos="$repos $batch"
+            page=$((page + 1))
+          done
 
           total_closed=0
 
           for repo in $repos; do
-            # Lister les PRs ouvertes du repo
-            prs=$(gh pr list --repo "$ORG/$repo" --state open --json number,title,headRefName -q \
-              '.[] | select(.title | startswith("Update to construction-v19")) | "\(.number)\t\(.headRefName)"')
+            # Lister les PRs ouvertes via l'API REST
+            prs=$(gh api "repos/$ORG/$repo/pulls?state=open&per_page=100" -q \
+              ".[] | select(.title | startswith(\"$PREFIX\")) | \"\(.number)\t\(.head.ref)\"")
 
             if [ -z "$prs" ]; then
               continue
@@ -31,7 +48,12 @@ jobs:
             while IFS=$'\t' read -r pr_number branch; do
               echo "🔒 $ORG/$repo — fermeture PR #$pr_number (branche: $branch)"
 
-              gh pr close "$pr_number" --repo "$ORG/$repo" --comment "Fermée automatiquement (workflow close-construction-v19-prs)."
+              # Fermer la PR via REST
+              gh api --method PATCH "repos/$ORG/$repo/pulls/$pr_number" -f state=closed --silent
+
+              # Poster un commentaire
+              gh api --method POST "repos/$ORG/$repo/issues/$pr_number/comments" \
+                -f body="Fermée automatiquement (workflow close-construction-prs)." --silent
 
               # Supprimer la branche distante
               if gh api "repos/$ORG/$repo/git/refs/heads/$branch" --silent 2>/dev/null; then
