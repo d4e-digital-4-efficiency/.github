@@ -38,9 +38,10 @@ Variables d'environnement requises :
   SOURCE_REPO      — Repo source des releases (défaut : d4e-common-def)
   BOT_BRANCH       — Nom de la branche créée par le bot (défaut : bot/update-d4e_construction)
   DASHBOARD_ISSUE  — Numéro de l'issue dashboard (défaut : 1)
-  GIT_USERNAME     — Auteur des commits (défaut : marc-d4e)
-  GIT_EMAIL        — Email des commits (défaut : marc@digital4efficiency.ch)
+  GIT_USERNAME     — Auteur des commits (défaut : d4e-ch)
+  GIT_EMAIL        — Email des commits (défaut : it@digital4efficiency.ch)
   TARGET_REPO      — Nom du repo cible (vide = tous les repos ElvyBat)
+  TARGET_VERSION   — Version Odoo cible : all, v17, v18, v19 (défaut : all)
 """
 
 import io
@@ -63,9 +64,11 @@ SOURCE_OWNER = os.environ.get("SOURCE_OWNER", "d4e-digital-4-efficiency")
 SOURCE_REPO = os.environ.get("SOURCE_REPO", "d4e-common-def")
 BOT_BRANCH = os.environ.get("BOT_BRANCH", "bot/update-d4e_construction")
 DASHBOARD_ISSUE = int(os.environ.get("DASHBOARD_ISSUE", "1"))
-GIT_USERNAME = os.environ.get("GIT_USERNAME", "marc-d4e")
-GIT_EMAIL = os.environ.get("GIT_EMAIL", "marc@digital4efficiency.ch")
+GIT_USERNAME = os.environ.get("GIT_USERNAME", "d4e-ch")
+GIT_EMAIL = os.environ.get("GIT_EMAIL", "it@digital4efficiency.ch")
 TARGET_REPO = os.environ.get("TARGET_REPO", "").strip()
+_target_version_raw = os.environ.get("TARGET_VERSION", "all").strip().lower()
+TARGET_VERSION = int(_target_version_raw.replace("v", "")) if _target_version_raw not in ("all", "") else None
 
 API = "https://api.github.com"
 HEADERS = {
@@ -544,6 +547,11 @@ def handle_repository(owner, repo_name, repo_html_url, clone_url, source_release
     staging_version = parse_version(staging_version_str)
     print(f"  Version recette : {staging_version_str}")
 
+    # Filtre par version Odoo si demandé
+    if TARGET_VERSION and staging_version[0] != TARGET_VERSION:
+        print(f"  Version Odoo {staging_version[0]} ≠ filtre v{TARGET_VERSION}, ignoré")
+        return
+
     # Dernière release pour cette version Odoo majeure
     latest = latest_release_for_major(source_releases, staging_version[0])
     if not latest:
@@ -634,6 +642,8 @@ def main():
     print(f"Dashboard issue : #{DASHBOARD_ISSUE}")
     if TARGET_REPO:
         print(f"Repo cible : {TARGET_REPO}")
+    if TARGET_VERSION:
+        print(f"Version Odoo : v{TARGET_VERSION}")
     print()
 
     # Récupérer les releases du repo source
@@ -686,8 +696,8 @@ def main():
         print()
 
     # Mise à jour du dashboard (uniquement en mode complet)
-    if TARGET_REPO:
-        print("Mode mono-repo : dashboard non mis à jour")
+    if TARGET_REPO or TARGET_VERSION:
+        print("Mode filtré : dashboard non mis à jour")
     else:
         print("Mise à jour du tableau de bord...")
         dashboard_body = generate_dashboard(releases_dict, repo_details)

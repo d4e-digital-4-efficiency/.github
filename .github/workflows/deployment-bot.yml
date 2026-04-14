@@ -7,6 +7,16 @@ on:
         description: "Nom du repo cible (vide = tous les repos ElvyBat)"
         required: false
         type: string
+      version:
+        description: "Version Odoo cible"
+        required: false
+        default: "all"
+        type: choice
+        options:
+          - all
+          - v17
+          - v18
+          - v19
 
 jobs:
   deploy:
@@ -25,8 +35,8 @@ jobs:
 
       - name: Configurer git
         run: |
-          git config --global user.name "${{ vars.BOT_GIT_USERNAME || 'marc-d4e' }}"
-          git config --global user.email "${{ vars.BOT_GIT_EMAIL || 'marc@digital4efficiency.ch' }}"
+          git config --global user.name "${{ vars.BOT_GIT_USERNAME || 'd4e-ch' }}"
+          git config --global user.email "${{ vars.BOT_GIT_EMAIL || 'it@digital4efficiency.ch' }}"
 
       - name: Exécuter le bot de déploiement
         env:
@@ -35,7 +45,8 @@ jobs:
           SOURCE_REPO: d4e-common-def
           BOT_BRANCH: bot/update-d4e_construction
           DASHBOARD_ISSUE: "1"
-          GIT_USERNAME: ${{ vars.BOT_GIT_USERNAME || 'marc-d4e' }}
-          GIT_EMAIL: ${{ vars.BOT_GIT_EMAIL || 'marc@digital4efficiency.ch' }}
+          GIT_USERNAME: ${{ vars.BOT_GIT_USERNAME || 'd4e-ch' }}
+          GIT_EMAIL: ${{ vars.BOT_GIT_EMAIL || 'it@digital4efficiency.ch' }}
           TARGET_REPO: ${{ inputs.repository }}
+          TARGET_VERSION: ${{ inputs.version }}
         run: python .github/scripts/deployment_bot.py
