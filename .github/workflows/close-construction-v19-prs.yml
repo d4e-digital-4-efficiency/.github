@@ -1,0 +1,49 @@
+name: Fermer les PRs "Update to construction-v19"
+
+on:
+  workflow_dispatch:
+
+jobs:
+  close-prs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fermer les PRs et supprimer les branches
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          ORG: d4e-digital-4-efficiency
+        run: |
+          echo "🔍 Recherche des PRs ouvertes commençant par 'Update to construction-v19'..."
+
+          # Récupérer tous les repos non archivés de l'org
+          repos=$(gh repo list "$ORG" --no-archived --limit 500 --json name -q '.[].name')
+
+          total_closed=0
+
+          for repo in $repos; do
+            # Lister les PRs ouvertes du repo
+            prs=$(gh pr list --repo "$ORG/$repo" --state open --json number,title,headRefName -q \
+              '.[] | select(.title | startswith("Update to construction-v19")) | "\(.number)\t\(.headRefName)"')
+
+            if [ -z "$prs" ]; then
+              continue
+            fi
+
+            while IFS=$'\t' read -r pr_number branch; do
+              echo "🔒 $ORG/$repo — fermeture PR #$pr_number (branche: $branch)"
+
+              gh pr close "$pr_number" --repo "$ORG/$repo" --comment "Fermée automatiquement (workflow close-construction-v19-prs)."
+
+              # Supprimer la branche distante
+              if gh api "repos/$ORG/$repo/git/refs/heads/$branch" --silent 2>/dev/null; then
+                gh api --method DELETE "repos/$ORG/$repo/git/refs/heads/$branch" --silent
+                echo "  🗑️ Branche '$branch' supprimée"
+              else
+                echo "  ℹ️ Branche '$branch' déjà absente"
+              fi
+
+              total_closed=$((total_closed + 1))
+            done <<< "$prs"
+          done
+
+          echo ""
+          echo "✅ Terminé — $total_closed PR(s) fermée(s)."
