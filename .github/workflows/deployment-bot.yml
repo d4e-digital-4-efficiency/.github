@@ -44,7 +44,7 @@ jobs:
           SOURCE_OWNER: d4e-digital-4-efficiency
           SOURCE_REPO: d4e-common-def
           BOT_BRANCH: bot/update-d4e_construction
-          DASHBOARD_ISSUE: "1"
+          DASHBOARD_ISSUE: "1006"
           GIT_USERNAME: ${{ vars.BOT_GIT_USERNAME || 'd4e-ch' }}
           GIT_EMAIL: ${{ vars.BOT_GIT_EMAIL || 'it@digital4efficiency.ch' }}
           TARGET_REPO: ${{ inputs.repository }}

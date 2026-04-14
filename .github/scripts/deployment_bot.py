@@ -63,7 +63,7 @@ GH_TOKEN = os.environ["GH_TOKEN"]
 SOURCE_OWNER = os.environ.get("SOURCE_OWNER", "d4e-digital-4-efficiency")
 SOURCE_REPO = os.environ.get("SOURCE_REPO", "d4e-common-def")
 BOT_BRANCH = os.environ.get("BOT_BRANCH", "bot/update-d4e_construction")
-DASHBOARD_ISSUE = int(os.environ.get("DASHBOARD_ISSUE", "1"))
+DASHBOARD_ISSUE = int(os.environ.get("DASHBOARD_ISSUE", "1006"))
 GIT_USERNAME = os.environ.get("GIT_USERNAME", "d4e-ch")
 GIT_EMAIL = os.environ.get("GIT_EMAIL", "it@digital4efficiency.ch")
 TARGET_REPO = os.environ.get("TARGET_REPO", "").strip()
@@ -475,7 +475,8 @@ def generate_dashboard(releases_dict, repo_details):
     lines.append("| :------ | ---: |")
     for tag in sorted(releases_dict.keys()):
         r = releases_dict[tag]
-        created = r.get("created_at", "")[:10]
+        created_raw = r.get("created_at", "")[:10]
+        created = datetime.strptime(created_raw, "%Y-%m-%d").strftime("%d/%m/%Y") if created_raw else ""
         lines.append(f"| [{tag}]({r['html_url']}) | {created} |")
 
     lines.append("")
@@ -500,7 +501,7 @@ def generate_dashboard(releases_dict, repo_details):
         )
 
     lines.append("")
-    lines.append(f"_Last updated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC_")
+    lines.append(f"_Last updated: {datetime.now(timezone.utc).strftime('%d/%m/%Y %H:%M:%S')} UTC_")
 
     return "\n".join(lines)
 
