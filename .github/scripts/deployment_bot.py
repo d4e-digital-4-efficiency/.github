@@ -501,6 +501,8 @@ def generate_dashboard(releases_dict, repo_details):
         )
 
     lines.append("")
+    lines.append(":fire: = la version en production n'est pas la dernière release disponible")
+    lines.append("")
     lines.append(f"_Last updated: {datetime.now(timezone.utc).strftime('%d/%m/%Y %H:%M:%S')} UTC_")
 
     return "\n".join(lines)
