@@ -40,6 +40,7 @@ Variables d'environnement requises :
   DASHBOARD_ISSUE  — Numéro de l'issue dashboard (défaut : 1)
   GIT_USERNAME     — Auteur des commits (défaut : marc-d4e)
   GIT_EMAIL        — Email des commits (défaut : marc@digital4efficiency.ch)
+  TARGET_REPO      — Nom du repo cible (vide = tous les repos ElvyBat)
 """
 
 import io
@@ -64,6 +65,7 @@ BOT_BRANCH = os.environ.get("BOT_BRANCH", "bot/update-d4e_construction")
 DASHBOARD_ISSUE = int(os.environ.get("DASHBOARD_ISSUE", "1"))
 GIT_USERNAME = os.environ.get("GIT_USERNAME", "marc-d4e")
 GIT_EMAIL = os.environ.get("GIT_EMAIL", "marc@digital4efficiency.ch")
+TARGET_REPO = os.environ.get("TARGET_REPO", "").strip()
 
 API = "https://api.github.com"
 HEADERS = {
@@ -630,6 +632,8 @@ def main():
     print(f"Source : {SOURCE_OWNER}/{SOURCE_REPO}")
     print(f"Branche bot : {BOT_BRANCH}")
     print(f"Dashboard issue : #{DASHBOARD_ISSUE}")
+    if TARGET_REPO:
+        print(f"Repo cible : {TARGET_REPO}")
     print()
 
     # Récupérer les releases du repo source
@@ -637,10 +641,16 @@ def main():
     print(f"{len(source_releases)} release(s) construction trouvée(s)")
     print()
 
-    # Récupérer tous les repos privés non archivés de l'organisation
-    all_repos = gh_api_paginated(f"/orgs/{SOURCE_OWNER}/repos?type=private")
-    repos = [r for r in all_repos if not r.get("archived", False)]
-    print(f"{len(repos)} repo(s) non archivé(s) trouvé(s)")
+    # Récupérer les repos à traiter
+    if TARGET_REPO:
+        # Mode mono-repo : récupérer uniquement le repo demandé
+        repo_data = gh_api(f"/repos/{SOURCE_OWNER}/{TARGET_REPO}")
+        repos = [repo_data] if repo_data and not repo_data.get("archived", False) else []
+    else:
+        # Mode complet : tous les repos privés non archivés
+        all_repos = gh_api_paginated(f"/orgs/{SOURCE_OWNER}/repos?type=private")
+        repos = [r for r in all_repos if not r.get("archived", False)]
+    print(f"{len(repos)} repo(s) à traiter")
     print()
 
     releases_dict = {}
@@ -675,11 +685,14 @@ def main():
 
         print()
 
-    # Mise à jour du dashboard
-    print("Mise à jour du tableau de bord...")
-    dashboard_body = generate_dashboard(releases_dict, repo_details)
-    update_dashboard_issue(SOURCE_OWNER, SOURCE_REPO, DASHBOARD_ISSUE, dashboard_body)
-    print("✓ Dashboard mis à jour")
+    # Mise à jour du dashboard (uniquement en mode complet)
+    if TARGET_REPO:
+        print("Mode mono-repo : dashboard non mis à jour")
+    else:
+        print("Mise à jour du tableau de bord...")
+        dashboard_body = generate_dashboard(releases_dict, repo_details)
+        update_dashboard_issue(SOURCE_OWNER, SOURCE_REPO, DASHBOARD_ISSUE, dashboard_body)
+        print("✓ Dashboard mis à jour")
     print()
     print("=== Terminé ===")
 

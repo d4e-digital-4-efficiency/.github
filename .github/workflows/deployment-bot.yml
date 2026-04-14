@@ -2,6 +2,11 @@ name: Bot de déploiement d4e_construction
 
 on:
   workflow_dispatch:
+    inputs:
+      repository:
+        description: "Nom du repo cible (vide = tous les repos ElvyBat)"
+        required: false
+        type: string
 
 jobs:
   deploy:
@@ -32,4 +37,5 @@ jobs:
           DASHBOARD_ISSUE: "1"
           GIT_USERNAME: ${{ vars.BOT_GIT_USERNAME || 'marc-d4e' }}
           GIT_EMAIL: ${{ vars.BOT_GIT_EMAIL || 'marc@digital4efficiency.ch' }}
+          TARGET_REPO: ${{ inputs.repository }}
         run: python .github/scripts/deployment_bot.py
