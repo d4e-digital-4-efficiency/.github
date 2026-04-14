@@ -497,7 +497,7 @@ def generate_dashboard(releases_dict, repo_details):
             fire = ":fire: "
         manager = d.get("manager") or ""
         lines.append(
-            f"| [{d['name']}]({d['url']}) | {manager} | {fire}{d['prod_version']} | {d['staging_version']} |"
+            f"| [{d['name']}]({d['url']}) | {manager} | {fire}{d['prod_version']} | {d['staging_version']} ({d['staging_branch']}) |"
         )
 
     lines.append("")
@@ -635,6 +635,7 @@ def handle_repository(owner, repo_name, repo_html_url, clone_url, source_release
         "manager": project_manager,
         "prod_version": prod_version_str,
         "staging_version": staging_version_str,
+        "staging_branch": staging_branch,
     })
 
 
