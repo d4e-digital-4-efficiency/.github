@@ -1,6 +1,9 @@
 name: Bot de déploiement d4e_construction
 
 on:
+  # Cron GitHub Actions = UTC
+  schedule:
+    - cron: "0 7 * * *"
   workflow_dispatch:
     inputs:
       repository:
