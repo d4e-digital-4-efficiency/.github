@@ -69,6 +69,8 @@ GIT_EMAIL = os.environ.get("GIT_EMAIL", "it@digital4efficiency.ch")
 TARGET_REPO = os.environ.get("TARGET_REPO", "").strip()
 _target_version_raw = os.environ.get("TARGET_VERSION", "all").strip().lower()
 TARGET_VERSION = int(_target_version_raw.replace("v", "")) if _target_version_raw not in ("all", "") else None
+_dashboard_only_raw = os.environ.get("DASHBOARD_ONLY", "").strip().lower()
+DASHBOARD_ONLY = _dashboard_only_raw in ("1", "true", "yes", "y", "on")
 
 API = "https://api.github.com"
 HEADERS = {
@@ -515,8 +517,21 @@ def update_dashboard_issue(owner, repo_name, issue_number, body):
 
 # ── Traitement principal ───────────────────────────────────────────────────────
 
-def handle_repository(owner, repo_name, repo_html_url, clone_url, source_releases, releases_dict, repo_details):
-    """Traite un repo ElvyBat : détecte les versions, met à jour le module, crée/met à jour la PR."""
+def handle_repository(
+    owner,
+    repo_name,
+    repo_html_url,
+    clone_url,
+    source_releases,
+    releases_dict,
+    repo_details,
+    dashboard_only=False,
+):
+    """Traite un repo ElvyBat.
+
+    - En mode normal : détecte les versions, met à jour le module, crée/met à jour la PR.
+    - En mode dashboard_only : collecte uniquement les infos (versions/branches/manager) pour le dashboard.
+    """
 
     # Branches
     branches = gh_api_paginated(f"/repos/{owner}/{repo_name}/branches")
@@ -555,6 +570,11 @@ def handle_repository(owner, repo_name, repo_html_url, clone_url, source_release
         print(f"  Version Odoo {staging_version[0]} ≠ filtre v{TARGET_VERSION}, ignoré")
         return
 
+    # Chef de projet (pour dashboard + reviewer PR)
+    project_manager = get_project_manager(owner, repo_name)
+    if project_manager:
+        print(f"  Chef de projet : {project_manager}")
+
     # Dernière release pour cette version Odoo majeure
     latest = latest_release_for_major(source_releases, staging_version[0])
     if not latest:
@@ -566,6 +586,19 @@ def handle_repository(owner, repo_name, repo_html_url, clone_url, source_release
 
     # Ajouter au dashboard
     releases_dict[latest_release["tag_name"]] = latest_release
+
+    # En mode dashboard_only : ne pas cloner / modifier / créer de PR
+    if dashboard_only:
+        repo_details.append({
+            "name": repo_name,
+            "url": repo_html_url,
+            "manager": project_manager,
+            "prod_version": prod_version_str,
+            "staging_version": staging_version_str,
+            "staging_branch": staging_branch,
+        })
+        print("  Mode dashboard_only : aucune mise à jour code/PR")
+        return
 
     # Clone et mise à jour
     temp_dir = os.path.join(tempfile.gettempdir(), f"deploy-bot-{repo_name}")
@@ -599,11 +632,6 @@ def handle_repository(owner, repo_name, repo_html_url, clone_url, source_release
         new_rels = new_releases_from(source_releases, staging_version)
         commit_message = f"Update to {latest_release['tag_name']}"
         pr_body = compile_release_notes(new_rels)
-
-        # Chef de projet
-        project_manager = get_project_manager(owner, repo_name)
-        if project_manager:
-            print(f"  Chef de projet : {project_manager}")
 
         if is_dirty(temp_dir):
             print(f"  Changements détectés, commit et push...")
@@ -644,6 +672,8 @@ def main():
     print(f"Source : {SOURCE_OWNER}/{SOURCE_REPO}")
     print(f"Branche bot : {BOT_BRANCH}")
     print(f"Dashboard issue : #{DASHBOARD_ISSUE}")
+    if DASHBOARD_ONLY:
+        print("Mode : dashboard_only (pas de clone/PR/push)")
     if TARGET_REPO:
         print(f"Repo cible : {TARGET_REPO}")
     if TARGET_VERSION:
@@ -692,6 +722,7 @@ def main():
             handle_repository(
                 repo_owner, repo_name, repo["html_url"], repo["clone_url"],
                 source_releases, releases_dict, repo_details,
+                dashboard_only=DASHBOARD_ONLY,
             )
             print(f"  ✓ Terminé")
         except Exception as e:
@@ -699,9 +730,9 @@ def main():
 
         print()
 
-    # Mise à jour du dashboard (uniquement en mode complet)
-    if TARGET_REPO or TARGET_VERSION:
-        print("Mode filtré : dashboard non mis à jour")
+    # Mise à jour du dashboard
+    if (TARGET_REPO or TARGET_VERSION) and not DASHBOARD_ONLY:
+        print("Mode filtré : dashboard non mis à jour (utiliser DASHBOARD_ONLY pour forcer)")
     else:
         print("Mise à jour du tableau de bord...")
         dashboard_body = generate_dashboard(releases_dict, repo_details)

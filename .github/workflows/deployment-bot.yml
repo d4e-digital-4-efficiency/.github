@@ -20,6 +20,11 @@ on:
           - v17
           - v18
           - v19
+      dashboard_only:
+        description: "Mettre à jour uniquement l'issue de suivi (pas de clone/PR/push)"
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   deploy:
@@ -52,4 +57,5 @@ jobs:
           GIT_EMAIL: ${{ vars.BOT_GIT_EMAIL || 'it@digital4efficiency.ch' }}
           TARGET_REPO: ${{ inputs.repository }}
           TARGET_VERSION: ${{ inputs.version }}
+          DASHBOARD_ONLY: ${{ inputs.dashboard_only }}
         run: python .github/scripts/deployment_bot.py
