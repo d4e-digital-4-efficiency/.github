@@ -1,6 +1,8 @@
 name: Fermer les PRs "Update to construction"
 
 on:
+  schedule:
+    - cron: "0 7 * * *"
   workflow_dispatch:
     inputs:
       version:
