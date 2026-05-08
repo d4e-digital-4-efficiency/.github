@@ -193,6 +193,11 @@ query($owner: String!, $repo: String!, $issue_number: Int!) {
               number
             }
           }
+          typeField: fieldValueByName(name: "Type") {
+            ... on ProjectV2ItemFieldSingleSelectValue {
+              name
+            }
+          }
           pointageTotalField: fieldValueByName(name: "Pointage total") {
             ... on ProjectV2ItemFieldNumberValue {
               number
@@ -245,6 +250,7 @@ pointage_total_minutes = 0
 pointage_total_field_id = None
 planned_duration_h = None
 planned_duration_label = None
+issue_type = None
 
 for label in labels:
     label_name = (label.get("name") or "").strip()
@@ -269,6 +275,8 @@ for item in items:
         item_id = item.get("id")
         project = item.get("project") or {}
         project_id = project.get("id")
+        type_val = item.get("typeField") or {}
+        issue_type = (type_val.get("name") or "").strip() or None
         # Pointage total (en minutes) : vide → 0
         pt_field = item.get("pointageTotalField")
         if pt_field is not None and "number" in pt_field and pt_field["number"] is not None:
@@ -300,6 +308,10 @@ print(
     f"📋 Tâche ID (depuis GitHub) : {task_id} — {odoo_task_form_url(task_id)}"
 )
 print(f"⏱️  Pointage total actuel : {pointage_total_minutes} min")
+if issue_type:
+    print(f"🏷️ Type (depuis GitHub Projects) : {issue_type}")
+else:
+    print("ℹ️ Type (depuis GitHub Projects) : non renseigné")
 
 # --- Chargement du mapping utilisateurs ---
 mapping_path = os.path.join(os.path.dirname(__file__), "users_mapping.json")
@@ -357,6 +369,7 @@ if not task_exists:
 print(f"✅ Tâche Odoo ID : {task_id} — {odoo_task_form_url(task_id)}")
 
 # --- Création du timesheet ---
+timesheet_prefix = "[FIX]" if issue_type == "Bug" else "[DEV]"
 try:
     timesheet_id = models.execute_kw(
         odoo_db, uid, odoo_password,
@@ -364,7 +377,7 @@ try:
         [{
             "task_id":     task_id,
             "unit_amount": duration,
-            "name":        f"[DEV] #{issue_number} {issue_title}",
+            "name":        f"{timesheet_prefix} #{issue_number} {issue_title}",
             "date":        datetime.today().strftime("%Y-%m-%d"),
             "employee_id": employee_id,
             "github_issue_url": github_issue_url,
