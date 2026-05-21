@@ -129,12 +129,16 @@ match_h = re.search(pattern_h, comment, re.IGNORECASE)
 match_min = re.search(pattern_minutes, comment, re.IGNORECASE)
 
 if match_hm:
+    duration_match = match_hm
     duration_h = int(match_hm.group(1)) + int(match_hm.group(2)) / 60.0
 elif match_colon:
+    duration_match = match_colon
     duration_h = int(match_colon.group(1)) + int(match_colon.group(2)) / 60.0
 elif match_h:
+    duration_match = match_h
     duration_h = float(match_h.group(1))
 elif match_min:
+    duration_match = match_min
     duration_h = float(match_min.group(1)) / 60.0
 else:
     msg = (
@@ -144,10 +148,15 @@ else:
     post_issue_comment(msg)
     exit(1)
 
+# Texte optionnel sur la même ligne, après la durée (ex. @pointage 15 test et déploiement)
+pointage_note = comment[duration_match.end():].split("\n", 1)[0].strip()
+
 # Arrondi au 1/4 h supérieur
 duration = math.ceil(duration_h / 0.25) * 0.25
 
 print(f"⏱️  Durée  : {duration:.2f}h")
+if pointage_note:
+    print(f"📝 Note   : {pointage_note}")
 print(f"👤 Auteur : {gh_author}")
 
 # --- Récupération du champ custom "Tâche ID" depuis GitHub Projects v2 ---
@@ -370,6 +379,9 @@ print(f"✅ Tâche Odoo ID : {task_id} — {odoo_task_form_url(task_id)}")
 
 # --- Création du timesheet ---
 timesheet_prefix = "[FIX]" if issue_type == "Bug" else "[DEV]"
+timesheet_name = f"{timesheet_prefix} #{issue_number} {issue_title}"
+if pointage_note:
+    timesheet_name = f"{timesheet_name} : {pointage_note}"
 try:
     timesheet_id = models.execute_kw(
         odoo_db, uid, odoo_password,
@@ -377,7 +389,7 @@ try:
         [{
             "task_id":     task_id,
             "unit_amount": duration,
-            "name":        f"{timesheet_prefix} #{issue_number} {issue_title}",
+            "name":        timesheet_name,
             "date":        datetime.today().strftime("%Y-%m-%d"),
             "employee_id": employee_id,
             "github_issue_url": github_issue_url,
