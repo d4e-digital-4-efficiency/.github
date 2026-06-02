@@ -82,77 +82,6 @@ def parse_planned_duration_from_label(label_name):
         return amount * PLANNED_DURATION_HOURS_PER_DAY
     return amount
 
-
-def github_graphql(payload_dict, *, features=None):
-    headers = {
-        "Authorization": f"Bearer {gh_pat}",
-        "Content-Type": "application/json",
-    }
-    if features:
-        headers["GraphQL-Features"] = features
-    req = urllib.request.Request(
-        "https://api.github.com/graphql",
-        data=json.dumps(payload_dict).encode("utf-8"),
-        headers=headers,
-        method="POST",
-    )
-    with urllib.request.urlopen(req) as resp:
-        return json.loads(resp.read().decode())
-
-
-def infer_issue_type_from_labels(label_nodes):
-    for label in label_nodes:
-        name = (label.get("name") or "").strip().lower()
-        if name == "bug":
-            return "Bug"
-    return None
-
-
-def fetch_issue_type_from_rest():
-    owner, repo = gh_repo.split("/")
-    url = f"https://api.github.com/repos/{owner}/{repo}/issues/{issue_number}"
-    req = urllib.request.Request(
-        url,
-        headers={
-            "Authorization": f"Bearer {gh_pat}",
-            "Accept": "application/vnd.github+json",
-        },
-        method="GET",
-    )
-    try:
-        with urllib.request.urlopen(req) as resp:
-            data = json.loads(resp.read().decode())
-        issue_type_obj = data.get("type")
-        if isinstance(issue_type_obj, dict):
-            return (issue_type_obj.get("name") or "").strip() or None
-    except urllib.error.HTTPError as e:
-        print(f"⚠️ Type d'issue (REST) non récupéré : {e.code} {e.reason}")
-    except Exception as e:
-        print(f"⚠️ Type d'issue (REST) non récupéré : {e}")
-    return None
-
-
-def resolve_issue_type(issue_data, label_nodes):
-    """Type natif GitHub (Bug, Feature, …) avec repli projet / REST / labels."""
-    issue_type = (issue_data.get("issueType") or {}).get("name")
-    issue_type = (issue_type or "").strip() or None
-
-    if not issue_type:
-        for item in issue_data.get("projectItems", {}).get("nodes", []):
-            type_val = item.get("typeField") or {}
-            issue_type = (type_val.get("name") or "").strip() or None
-            if issue_type:
-                break
-
-    if not issue_type:
-        issue_type = fetch_issue_type_from_rest()
-
-    if not issue_type:
-        issue_type = infer_issue_type_from_labels(label_nodes)
-
-    return issue_type
-
-
 def post_issue_comment(body):
     """Poste un commentaire sur l'issue (utilise GITHUB_TOKEN, pas le PAT)."""
     owner, repo = gh_repo.split("/")
@@ -293,17 +222,27 @@ query($owner: String!, $repo: String!, $issue_number: Int!) {
 }
 """
 
-result = github_graphql(
-    {
-        "query": graphql_query,
-        "variables": {
-            "owner": owner,
-            "repo": repo,
-            "issue_number": int(issue_number),
-        },
+payload = json.dumps({
+    "query": graphql_query,
+    "variables": {
+        "owner": owner,
+        "repo": repo,
+        "issue_number": int(issue_number),
     },
-    features="issue_types",
+}).encode("utf-8")
+
+req = urllib.request.Request(
+    "https://api.github.com/graphql",
+    data=payload,
+    headers={
+        "Authorization": f"Bearer {gh_pat}",
+        "Content-Type": "application/json",
+    },
+    method="POST",
 )
+
+with urllib.request.urlopen(req) as resp:
+    result = json.loads(resp.read().decode())
 
 if "errors" in result:
     msg = f"❌ Erreur GraphQL GitHub : {result['errors']}"
@@ -314,8 +253,9 @@ if "errors" in result:
 issue_data = result.get("data", {}).get("repository", {}).get("issue", {})
 issue_title = (issue_data.get("title") or "").strip().replace("\n", " ")
 issue_author_login = (issue_data.get("author") or {}).get("login")
+issue_type_raw = (issue_data.get("issueType") or {}).get("name")
+issue_type = (issue_type_raw or "").strip() or None
 labels = issue_data.get("labels", {}).get("nodes", [])
-issue_type = resolve_issue_type(issue_data, labels)
 items = issue_data.get("projectItems", {}).get("nodes", [])
 task_id = None
 item_id = None
@@ -348,6 +288,9 @@ for item in items:
         item_id = item.get("id")
         project = item.get("project") or {}
         project_id = project.get("id")
+        if not issue_type:
+            type_val = item.get("typeField") or {}
+            issue_type = (type_val.get("name") or "").strip() or None
         # Pointage total (en minutes) : vide → 0
         pt_field = item.get("pointageTotalField")
         if pt_field is not None and "number" in pt_field and pt_field["number"] is not None:
@@ -440,7 +383,7 @@ if not task_exists:
 print(f"✅ Tâche Odoo ID : {task_id} — {odoo_task_form_url(task_id)}")
 
 # --- Création du timesheet ---
-timesheet_prefix = "[FIX]" if (issue_type or "").lower() == "bug" else "[DEV]"
+timesheet_prefix = "[FIX]" if issue_type == "Bug" else "[DEV]"
 timesheet_name = f"{timesheet_prefix} #{issue_number} {issue_title}"
 if pointage_note:
     timesheet_name = f"{timesheet_name} : {pointage_note}"
@@ -487,16 +430,27 @@ if not exclude_from_total and item_id and project_id and pointage_total_field_id
       }
     }
     """
+    payload_update = json.dumps({
+        "query": mutation,
+        "variables": {
+            "projectId": project_id,
+            "itemId": item_id,
+            "fieldId": pointage_total_field_id,
+            "value": float(new_total_minutes),
+        },
+    }).encode("utf-8")
+    req_update = urllib.request.Request(
+        "https://api.github.com/graphql",
+        data=payload_update,
+        headers={
+            "Authorization": f"Bearer {gh_pat}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
     try:
-        result_update = github_graphql({
-            "query": mutation,
-            "variables": {
-                "projectId": project_id,
-                "itemId": item_id,
-                "fieldId": pointage_total_field_id,
-                "value": float(new_total_minutes),
-            },
-        })
+        with urllib.request.urlopen(req_update) as resp_update:
+            result_update = json.loads(resp_update.read().decode())
         if "errors" in result_update:
             err_msg = str(result_update["errors"])
             print(f"⚠️ Champ 'Pointage total' non mis à jour : {result_update['errors']}")
