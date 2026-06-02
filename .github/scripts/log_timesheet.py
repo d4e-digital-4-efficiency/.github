@@ -167,6 +167,9 @@ query($owner: String!, $repo: String!, $issue_number: Int!) {
   repository(owner: $owner, name: $repo) {
     issue(number: $issue_number) {
       title
+      issueType {
+        name
+      }
       author {
         login
       }
@@ -250,6 +253,8 @@ if "errors" in result:
 issue_data = result.get("data", {}).get("repository", {}).get("issue", {})
 issue_title = (issue_data.get("title") or "").strip().replace("\n", " ")
 issue_author_login = (issue_data.get("author") or {}).get("login")
+issue_type_raw = (issue_data.get("issueType") or {}).get("name")
+issue_type = (issue_type_raw or "").strip() or None
 labels = issue_data.get("labels", {}).get("nodes", [])
 items = issue_data.get("projectItems", {}).get("nodes", [])
 task_id = None
@@ -259,7 +264,6 @@ pointage_total_minutes = 0
 pointage_total_field_id = None
 planned_duration_h = None
 planned_duration_label = None
-issue_type = None
 
 for label in labels:
     label_name = (label.get("name") or "").strip()
@@ -284,8 +288,9 @@ for item in items:
         item_id = item.get("id")
         project = item.get("project") or {}
         project_id = project.get("id")
-        type_val = item.get("typeField") or {}
-        issue_type = (type_val.get("name") or "").strip() or None
+        if not issue_type:
+            type_val = item.get("typeField") or {}
+            issue_type = (type_val.get("name") or "").strip() or None
         # Pointage total (en minutes) : vide → 0
         pt_field = item.get("pointageTotalField")
         if pt_field is not None and "number" in pt_field and pt_field["number"] is not None:
@@ -318,9 +323,9 @@ print(
 )
 print(f"⏱️  Pointage total actuel : {pointage_total_minutes} min")
 if issue_type:
-    print(f"🏷️ Type (depuis GitHub Projects) : {issue_type}")
+    print(f"🏷️ Type d'issue : {issue_type}")
 else:
-    print("ℹ️ Type (depuis GitHub Projects) : non renseigné")
+    print("ℹ️ Type d'issue : non renseigné")
 
 # --- Chargement du mapping utilisateurs ---
 mapping_path = os.path.join(os.path.dirname(__file__), "users_mapping.json")
