@@ -557,6 +557,9 @@ def handle_repository(
 
     - En mode normal : détecte les versions, met à jour le module, crée/met à jour la PR.
     - En mode dashboard_only : collecte uniquement les infos (versions/branches/manager) pour le dashboard.
+
+    Retourne un statut pour le récap de fin de run : pr_created, pr_updated,
+    orphan_deleted, up_to_date, no_change, dashboard_only, skip.
     """
 
     # Branches
@@ -564,13 +567,13 @@ def handle_repository(
     prod_branch = find_production_branch(branches)
     if not prod_branch:
         print(f"  Pas de branche de production trouvée")
-        return
+        return "skip"
     print(f"  Branche production : {prod_branch}")
 
     staging_branch = find_staging_branch(branches)
     if not staging_branch:
         print(f"  Pas de branche de recette trouvée")
-        return
+        return "skip"
     print(f"  Branche recette : {staging_branch}")
 
     # Version production
@@ -578,7 +581,7 @@ def handle_repository(
     prod_version_str = get_version_from_manifest(prod_manifest)
     if not prod_version_str:
         print(f"  Manifest introuvable sur {prod_branch}")
-        return
+        return "skip"
     prod_version = parse_version(prod_version_str)
     print(f"  Version production : {prod_version_str}")
 
@@ -587,14 +590,14 @@ def handle_repository(
     staging_version_str = get_version_from_manifest(staging_manifest)
     if not staging_version_str:
         print(f"  Manifest introuvable sur {staging_branch}")
-        return
+        return "skip"
     staging_version = parse_version(staging_version_str)
     print(f"  Version recette : {staging_version_str}")
 
     # Filtre par version Odoo si demandé
     if TARGET_VERSION and staging_version[0] != TARGET_VERSION:
         print(f"  Version Odoo {staging_version[0]} ≠ filtre v{TARGET_VERSION}, ignoré")
-        return
+        return "skip"
 
     # Chef de projet (pour dashboard + reviewer PR)
     project_manager = get_project_manager(owner, repo_name)
@@ -605,7 +608,7 @@ def handle_repository(
     latest = latest_release_for_major(source_releases, staging_version[0])
     if not latest:
         print(f"  Aucune release pour la version Odoo {staging_version[0]}")
-        return
+        return "skip"
 
     latest_version, latest_release = latest
     print(f"  Dernière release : {latest_release['tag_name']}")
@@ -626,7 +629,7 @@ def handle_repository(
     if dashboard_only:
         repo_details.append(dashboard_entry)
         print("  Mode dashboard_only : aucune mise à jour code/PR")
-        return
+        return "dashboard_only"
 
     existing_pr = find_existing_pr(owner, repo_name, BOT_BRANCH)
     remote_branch_exists = branch_exists_on_remote(owner, repo_name, BOT_BRANCH)
@@ -637,18 +640,21 @@ def handle_repository(
     # depuis la recette sans ouvrir de nouvelle PR).
     if staging_current:
         print("  Recette déjà à jour, rien à déployer")
+        result = "up_to_date"
         if existing_pr is None and remote_branch_exists:
-            delete_remote_branch(owner, repo_name, BOT_BRANCH)
+            if delete_remote_branch(owner, repo_name, BOT_BRANCH):
+                result = "orphan_deleted"
         elif existing_pr is not None:
             print(f"  PR #{existing_pr['number']} déjà ouverte, laissée telle quelle")
         repo_details.append(dashboard_entry)
-        return
+        return result
 
     # Clone et mise à jour
     temp_dir = os.path.join(tempfile.gettempdir(), f"deploy-bot-{repo_name}")
     if os.path.exists(temp_dir):
         shutil.rmtree(temp_dir)
 
+    result = "no_change"
     try:
         print(f"  Clonage du repo...")
         clone_repo(clone_url, temp_dir)
@@ -683,24 +689,54 @@ def handle_repository(
                 print(f"  Création d'une nouvelle PR...")
                 create_pull_request(owner, repo_name, BOT_BRANCH, staging_branch,
                                     commit_message, pr_body, project_manager)
+                result = "pr_created"
             else:
                 print(f"  Mise à jour de la PR #{existing_pr['number']}...")
                 update_pull_request(owner, repo_name, existing_pr["number"],
                                     commit_message, pr_body, project_manager)
+                result = "pr_updated"
         else:
             print(f"  Aucun changement détecté")
             if existing_pr is None and remote_branch_exists:
-                delete_remote_branch(owner, repo_name, BOT_BRANCH)
+                if delete_remote_branch(owner, repo_name, BOT_BRANCH):
+                    result = "orphan_deleted"
             elif existing_pr is not None:
                 print(f"  Mise à jour de la PR #{existing_pr['number']}...")
                 update_pull_request(owner, repo_name, existing_pr["number"],
                                     commit_message, pr_body, project_manager)
+                result = "pr_updated"
 
     finally:
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir, ignore_errors=True)
 
     repo_details.append(dashboard_entry)
+    return result
+
+
+def print_run_summary(summary):
+    """Affiche un récap en fin de run (toujours visible si l'UI tronque le milieu)."""
+    print("=== Récapitulatif ===")
+    sections = (
+        ("errors", "Erreurs (push refusé, clone, API, …)"),
+        ("pr_created", "PR créées"),
+        ("pr_updated", "PR mises à jour"),
+        ("orphan_deleted", "Branches orphelines supprimées"),
+        ("up_to_date", "Recette déjà à jour"),
+        ("no_change", "Aucun diff après zipball"),
+    )
+    has_lines = False
+    for key, title in sections:
+        items = summary.get(key) or []
+        if not items:
+            continue
+        has_lines = True
+        print(f"{title} ({len(items)}) :")
+        for item in items:
+            print(f"  - {item}")
+    if not has_lines:
+        print("Aucune action ElvyBat à signaler")
+    print()
 
 
 def main():
@@ -735,6 +771,14 @@ def main():
 
     releases_dict = {}
     repo_details = []
+    summary = {
+        "errors": [],
+        "pr_created": [],
+        "pr_updated": [],
+        "orphan_deleted": [],
+        "up_to_date": [],
+        "no_change": [],
+    }
 
     for repo in repos:
         repo_name = repo["name"]
@@ -755,14 +799,17 @@ def main():
             continue
 
         try:
-            handle_repository(
+            result = handle_repository(
                 repo_owner, repo_name, repo["html_url"], repo["clone_url"],
                 source_releases, releases_dict, repo_details,
                 dashboard_only=DASHBOARD_ONLY,
             )
             print(f"  ✓ Terminé")
+            if result in summary:
+                summary[result].append(repo_name)
         except Exception as e:
             print(f"  ✗ Erreur : {e}")
+            summary["errors"].append(f"{repo_name} — {e}")
 
         print()
 
@@ -775,7 +822,10 @@ def main():
         update_dashboard_issue(SOURCE_OWNER, SOURCE_REPO, DASHBOARD_ISSUE, dashboard_body)
         print("✓ Dashboard mis à jour")
     print()
+    print_run_summary(summary)
     print("=== Terminé ===")
+    if summary["errors"]:
+        sys.exit(1)
 
 
 if __name__ == "__main__":
