@@ -14,7 +14,7 @@ Reproduit le fonctionnement du projet C# D4E.Deployment.Bot (AWS Lambda).
 │ DeploymentService.ProcessAsync()         │ main()                                           │
 │ DeploymentService.HandleRepositoryAsync()│ handle_repository()                              │
 │ RepositoryService  (Octokit)             │ gh_api(), gh_api_paginated() — API REST urllib   │
-│ GitService         (LibGit2Sharp)        │ clone_repo(), checkout_branch(), … — git CLI     │
+│ GitService         (LibGit2Sharp)        │ clone_repo(), create_local_branch(), … — git CLI │
 │ UnzipSourcesHelper                       │ replicate_with_source_stream()                   │
 │ ModuleVersionHelper                      │ get_version_from_manifest()                      │
 │ DashboardService                         │ generate_dashboard()                             │
@@ -325,14 +325,14 @@ def checkout_branch(repo_path, branch):
     _git(repo_path, "pull", "origin", branch)
 
 
-def create_branch(repo_path, branch):
-    """Crée une branche locale depuis la branche courante, push et pull."""
-    # Supprimer la branche locale si elle existe déjà
+def create_local_branch(repo_path, branch):
+    """Crée une branche locale depuis HEAD, sans push remote.
+
+    Le push n'a lieu que s'il y a réellement des changements à proposer
+    (sinon on laisse une branche orpheline sans PR, typiquement après un merge).
+    """
     _git(repo_path, "branch", "-D", branch)
     _git(repo_path, "checkout", "-b", branch)
-    # Push (peut échouer si la branche existe déjà sur remote, c'est OK)
-    _git(repo_path, "push", "-u", "origin", branch)
-    _git(repo_path, "pull", "origin", branch)
 
 
 def stage_all(repo_path):
@@ -347,10 +347,25 @@ def is_dirty(repo_path):
 
 
 def commit_and_push(repo_path, branch, message):
-    """Commit et push les changements."""
-    _git(repo_path, "-c", f"user.name={GIT_USERNAME}", "-c", f"user.email={GIT_EMAIL}",
-         "commit", "-m", message)
-    _git(repo_path, "push", "origin", branch)
+    """Commit et pousse la branche bot (force-with-lease : le bot en est propriétaire)."""
+    commit = _git(
+        repo_path,
+        "-c", f"user.name={GIT_USERNAME}",
+        "-c", f"user.email={GIT_EMAIL}",
+        "commit", "-m", message,
+    )
+    if commit.returncode != 0:
+        raise RuntimeError(f"Commit sur {branch} échoué")
+
+    # Si la branche remote existe déjà, --force-with-lease permet de la
+    # recréer depuis la recette. Sinon, un push normal suffit.
+    fetch = _git(repo_path, "fetch", "origin", branch)
+    push_args = ["push", "-u", "origin", branch]
+    if fetch.returncode == 0:
+        push_args = ["push", "--force-with-lease", "-u", "origin", branch]
+    push = _git(repo_path, *push_args)
+    if push.returncode != 0:
+        raise RuntimeError(f"Push de {branch} échoué")
 
 
 # ── Extraction du zipball ──────────────────────────────────────────────────────
@@ -418,6 +433,17 @@ def branch_exists_on_remote(owner, repo_name, branch):
         gh_api(f"/repos/{owner}/{repo_name}/branches/{branch}")
         return True
     except HTTPError:
+        return False
+
+
+def delete_remote_branch(owner, repo_name, branch):
+    """Supprime une branche distante (refs/heads/...)."""
+    try:
+        gh_api(f"/repos/{owner}/{repo_name}/git/refs/heads/{branch}", method="DELETE")
+        print(f"  Branche orpheline {branch} supprimée")
+        return True
+    except HTTPError as e:
+        print(f"  ⚠ Impossible de supprimer {branch}: {e.code}")
         return False
 
 
@@ -587,17 +613,35 @@ def handle_repository(
     # Ajouter au dashboard
     releases_dict[latest_release["tag_name"]] = latest_release
 
+    dashboard_entry = {
+        "name": repo_name,
+        "url": repo_html_url,
+        "manager": project_manager,
+        "prod_version": prod_version_str,
+        "staging_version": staging_version_str,
+        "staging_branch": staging_branch,
+    }
+
     # En mode dashboard_only : ne pas cloner / modifier / créer de PR
     if dashboard_only:
-        repo_details.append({
-            "name": repo_name,
-            "url": repo_html_url,
-            "manager": project_manager,
-            "prod_version": prod_version_str,
-            "staging_version": staging_version_str,
-            "staging_branch": staging_branch,
-        })
+        repo_details.append(dashboard_entry)
         print("  Mode dashboard_only : aucune mise à jour code/PR")
+        return
+
+    existing_pr = find_existing_pr(owner, repo_name, BOT_BRANCH)
+    remote_branch_exists = branch_exists_on_remote(owner, repo_name, BOT_BRANCH)
+    staging_current = module_version(staging_version) >= module_version(latest_version)
+
+    # Recette déjà à jour : ne pas recréer bot/update (cas typique après merge
+    # de la PR : GitHub a supprimé la branche, le cron suivant la recréait
+    # depuis la recette sans ouvrir de nouvelle PR).
+    if staging_current:
+        print("  Recette déjà à jour, rien à déployer")
+        if existing_pr is None and remote_branch_exists:
+            delete_remote_branch(owner, repo_name, BOT_BRANCH)
+        elif existing_pr is not None:
+            print(f"  PR #{existing_pr['number']} déjà ouverte, laissée telle quelle")
+        repo_details.append(dashboard_entry)
         return
 
     # Clone et mise à jour
@@ -612,8 +656,8 @@ def handle_repository(
         print(f"  Checkout de {staging_branch}...")
         checkout_branch(temp_dir, staging_branch)
 
-        print(f"  Création de la branche {BOT_BRANCH}...")
-        create_branch(temp_dir, BOT_BRANCH)
+        print(f"  Préparation locale de {BOT_BRANCH}...")
+        create_local_branch(temp_dir, BOT_BRANCH)
 
         print(f"  Téléchargement du zipball...")
         zipball = gh_download_stream(latest_release["zipball_url"])
@@ -623,10 +667,6 @@ def handle_repository(
 
         print(f"  Staging des changements...")
         stage_all(temp_dir)
-
-        # Vérifier PR existante et branche remote
-        existing_pr = find_existing_pr(owner, repo_name, BOT_BRANCH)
-        remote_branch_exists = branch_exists_on_remote(owner, repo_name, BOT_BRANCH)
 
         # Notes de release
         new_rels = new_releases_from(source_releases, staging_version)
@@ -639,32 +679,28 @@ def handle_repository(
 
             print(f"  {len(new_rels)} nouvelle(s) release(s) à appliquer")
 
-            if existing_pr is None and remote_branch_exists:
+            if existing_pr is None:
                 print(f"  Création d'une nouvelle PR...")
                 create_pull_request(owner, repo_name, BOT_BRANCH, staging_branch,
                                     commit_message, pr_body, project_manager)
+            else:
+                print(f"  Mise à jour de la PR #{existing_pr['number']}...")
+                update_pull_request(owner, repo_name, existing_pr["number"],
+                                    commit_message, pr_body, project_manager)
         else:
             print(f"  Aucun changement détecté")
-
-        # Mise à jour de la PR existante (même sans nouveaux changements)
-        if remote_branch_exists and existing_pr is not None:
-            print(f"  Mise à jour de la PR #{existing_pr['number']}...")
-            update_pull_request(owner, repo_name, existing_pr["number"],
-                                commit_message, pr_body, project_manager)
+            if existing_pr is None and remote_branch_exists:
+                delete_remote_branch(owner, repo_name, BOT_BRANCH)
+            elif existing_pr is not None:
+                print(f"  Mise à jour de la PR #{existing_pr['number']}...")
+                update_pull_request(owner, repo_name, existing_pr["number"],
+                                    commit_message, pr_body, project_manager)
 
     finally:
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir, ignore_errors=True)
 
-    # Ajout au dashboard
-    repo_details.append({
-        "name": repo_name,
-        "url": repo_html_url,
-        "manager": project_manager,
-        "prod_version": prod_version_str,
-        "staging_version": staging_version_str,
-        "staging_branch": staging_branch,
-    })
+    repo_details.append(dashboard_entry)
 
 
 def main():
