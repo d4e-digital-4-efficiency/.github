@@ -2,13 +2,11 @@
     "_comment": "Mapping login GitHub → employé Odoo (ID + prénom). exclude_from_total: true → le temps est envoyé à Odoo mais n'impacte pas le pointage total de l'issue",
     "d4e-ch": {
         "employee_id": 2,
-        "first_name": "Alexandre",
-        "exclude_from_total": true
+        "first_name": "Alexandre"
     },
     "Le-Koala": {
         "employee_id": 12,
-        "first_name": "Alexis",
-        "exclude_from_total": true
+        "first_name": "Alexis"
     },
     "rihabjl": {
         "employee_id": 28,
