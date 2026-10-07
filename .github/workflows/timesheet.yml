@@ -13,13 +13,13 @@ jobs:
 
     steps:
       - name: Checkout du repo central .github
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: d4e-digital-4-efficiency/.github
           ref: main
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
 
